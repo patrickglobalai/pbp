@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
-import { Key, Plus, Copy, ArrowLeft, AlertCircle } from 'lucide-react';
-import { collection, getDocs, addDoc, query, where } from 'firebase/firestore';
-import { auth, db } from '../../lib/firebase';
+import { addDoc, collection, getDocs, query, where } from "firebase/firestore";
+import { motion } from "framer-motion";
+import { AlertCircle, ArrowLeft, Copy, Key, Plus } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { auth, db } from "../../lib/firebase";
 
 interface AssessmentCode {
   id: string;
@@ -17,42 +17,45 @@ interface AssessmentCode {
 export function PartnerAssessmentCodes() {
   const [codes, setCodes] = useState<AssessmentCode[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [showGenerateModal, setShowGenerateModal] = useState(false);
-  const [selectedTier, setSelectedTier] = useState('basic');
+  const [selectedTier, setSelectedTier] = useState("basic");
 
   useEffect(() => {
-    loadCodes();
-  }, []);
+    if (auth?.currentUser?.uid) {
+      loadCodes();
+    }
+  }, [auth?.currentUser?.uid]);
+
 
   const loadCodes = async () => {
     try {
       setIsLoading(true);
       const partnerId = auth.currentUser?.uid;
-      
+
       const codesQuery = query(
-        collection(db, 'assessment_codes'),
-        where('partnerId', '==', partnerId)
+        collection(db, "assessment_codes"),
+        where("partnerId", "==", partnerId)
       );
       const codesSnapshot = await getDocs(codesQuery);
-      
-      const codesData = codesSnapshot.docs.map(doc => ({
+
+      const codesData = codesSnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
-        createdAt: doc.data().createdAt.toDate()
+        createdAt: doc.data().createdAt.toDate(),
       })) as AssessmentCode[];
 
       setCodes(codesData);
     } catch (err) {
-      console.error('Error loading codes:', err);
-      setError('Failed to load assessment codes');
+      console.error("Error loading codes:", err);
+      setError("Failed to load assessment codes");
     } finally {
       setIsLoading(false);
     }
   };
 
   const generateCode = () => {
-    return 'PBP' + Math.random().toString(36).substring(2, 8).toUpperCase();
+    return "PBP" + Math.random().toString(36).substring(2, 8).toUpperCase();
   };
 
   const handleGenerateCode = async (e: React.FormEvent) => {
@@ -60,21 +63,21 @@ export function PartnerAssessmentCodes() {
     try {
       setIsLoading(true);
       const partnerId = auth.currentUser?.uid;
-      
+
       const newCode = generateCode();
-      await addDoc(collection(db, 'assessment_codes'), {
+      await addDoc(collection(db, "assessment_codes"), {
         code: newCode,
         partnerId,
         tier: selectedTier,
         used: false,
-        createdAt: new Date()
+        createdAt: new Date(),
       });
 
       setShowGenerateModal(false);
       loadCodes();
     } catch (err) {
-      console.error('Error generating code:', err);
-      setError('Failed to generate assessment code');
+      console.error("Error generating code:", err);
+      setError("Failed to generate assessment code");
     } finally {
       setIsLoading(false);
     }
@@ -97,8 +100,8 @@ export function PartnerAssessmentCodes() {
   return (
     <div className="min-h-screen ai-gradient-bg py-12 px-4">
       <div className="max-w-7xl mx-auto">
-        <Link 
-          to="/partner" 
+        <Link
+          to="/partner"
           className="inline-flex items-center gap-2 text-white/80 hover:text-white mb-8 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
@@ -109,8 +112,12 @@ export function PartnerAssessmentCodes() {
           <div className="flex items-center gap-4">
             <Key className="w-12 h-12 text-white" />
             <div>
-              <h1 className="text-3xl font-bold text-white">Assessment Codes</h1>
-              <p className="text-white/80">Generate and manage assessment codes</p>
+              <h1 className="text-3xl font-bold text-white">
+                Assessment Codes
+              </h1>
+              <p className="text-white/80">
+                Generate and manage assessment codes
+              </p>
             </div>
           </div>
           <button
@@ -141,11 +148,9 @@ export function PartnerAssessmentCodes() {
               >
                 <div>
                   <div className="font-medium text-white">{code.code}</div>
-                  <div className="text-white/60">
-                    Tier: {code.tier}
-                  </div>
+                  <div className="text-white/60">Tier: {code.tier}</div>
                   <div className="text-sm text-white/40">
-                    Status: {code.used ? 'Used' : 'Available'}
+                    Status: {code.used ? "Used" : "Available"}
                   </div>
                 </div>
                 <button
@@ -167,10 +172,14 @@ export function PartnerAssessmentCodes() {
               animate={{ opacity: 1, scale: 1 }}
               className="glass-effect rounded-3xl p-8 w-full max-w-lg mx-4"
             >
-              <h2 className="text-2xl font-bold text-white mb-6">Generate Assessment Code</h2>
+              <h2 className="text-2xl font-bold text-white mb-6">
+                Generate Assessment Code
+              </h2>
               <form onSubmit={handleGenerateCode} className="space-y-6">
                 <div>
-                  <label htmlFor="tier" className="block text-white mb-2">Coach Tier</label>
+                  <label htmlFor="tier" className="block text-white mb-2">
+                    Coach Tier
+                  </label>
                   <select
                     id="tier"
                     value={selectedTier}
@@ -200,7 +209,7 @@ export function PartnerAssessmentCodes() {
                     className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 
                       text-white font-medium hover:scale-105 transition-all disabled:opacity-50"
                   >
-                    {isLoading ? 'Generating...' : 'Generate Code'}
+                    {isLoading ? "Generating..." : "Generate Code"}
                   </button>
                 </div>
               </form>

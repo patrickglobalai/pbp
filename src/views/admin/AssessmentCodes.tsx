@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
-import { Key, Plus, Copy, ArrowLeft, AlertCircle } from 'lucide-react';
-import { collection, getDocs, addDoc, query, where } from 'firebase/firestore';
-import { db } from '../../lib/firebase';
+import { addDoc, collection, getDocs, query, where } from "firebase/firestore";
+import { motion } from "framer-motion";
+import { AlertCircle, ArrowLeft, Copy, Key, Plus } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { auth, db } from "../../lib/firebase";
 
 interface AssessmentCode {
   id: string;
@@ -22,51 +22,54 @@ interface AssessmentCode {
 export function AssessmentCodes() {
   const [codes, setCodes] = useState<AssessmentCode[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [showGenerateModal, setShowGenerateModal] = useState(false);
-  const [selectedCoach, setSelectedCoach] = useState('');
+  const [selectedCoach, setSelectedCoach] = useState("");
   const [coaches, setCoaches] = useState<any[]>([]);
 
   useEffect(() => {
-    loadCodes();
-    loadCoaches();
-  }, []);
+    if (auth?.currentUser?.uid) {
+      loadCodes();
+      loadCoaches();
+    }
+  }, [auth?.currentUser?.uid]);
 
   const loadCodes = async () => {
     try {
       setIsLoading(true);
-      const codesRef = collection(db, 'assessment_codes');
+      const codesRef = collection(db, "assessment_codes");
       const codesSnapshot = await getDocs(codesRef);
-      
-      const codesData = await Promise.all(codesSnapshot.docs.map(async (doc) => {
-        const data = doc.data();
-        
-        // Get coach data
-        const coachDoc = await getDocs(query(
-          collection(db, 'users'),
-          where('userId', '==', data.coachId)
-        ));
-        const coachData = coachDoc.docs[0]?.data();
-        
-        return {
-          id: doc.id,
-          coachId: data.coachId,
-          code: data.code,
-          createdAt: data.createdAt.toDate(),
-          used: data.used,
-          coach: {
-            user: {
-              fullName: coachData?.fullName || '',
-              email: coachData?.email || ''
-            }
-          }
-        };
-      }));
+
+      const codesData = await Promise.all(
+        codesSnapshot.docs.map(async (doc) => {
+          const data = doc.data();
+
+          // Get coach data
+          const coachDoc = await getDocs(
+            query(collection(db, "users"), where("userId", "==", data.coachId))
+          );
+          const coachData = coachDoc.docs[0]?.data();
+
+          return {
+            id: doc.id,
+            coachId: data.coachId,
+            code: data.code,
+            createdAt: data.createdAt.toDate(),
+            used: data.used,
+            coach: {
+              user: {
+                fullName: coachData?.fullName || "",
+                email: coachData?.email || "",
+              },
+            },
+          };
+        })
+      );
 
       setCodes(codesData);
     } catch (err) {
-      console.error('Error loading codes:', err);
-      setError('Failed to load assessment codes');
+      console.error("Error loading codes:", err);
+      setError("Failed to load assessment codes");
     } finally {
       setIsLoading(false);
     }
@@ -74,55 +77,56 @@ export function AssessmentCodes() {
 
   const loadCoaches = async () => {
     try {
-      const coachesRef = collection(db, 'coaches');
+      const coachesRef = collection(db, "coaches");
       const coachesSnapshot = await getDocs(coachesRef);
-      
-      const coachesData = await Promise.all(coachesSnapshot.docs.map(async (doc) => {
-        const data = doc.data();
-        const userDoc = await getDocs(query(
-          collection(db, 'users'),
-          where('userId', '==', data.userId)
-        ));
-        const userData = userDoc.docs[0]?.data();
-        
-        return {
-          id: doc.id,
-          userId: data.userId,
-          user: {
-            fullName: userData?.fullName || '',
-            email: userData?.email || ''
-          }
-        };
-      }));
+
+      const coachesData = await Promise.all(
+        coachesSnapshot.docs.map(async (doc) => {
+          const data = doc.data();
+          const userDoc = await getDocs(
+            query(collection(db, "users"), where("userId", "==", data.userId))
+          );
+          const userData = userDoc.docs[0]?.data();
+
+          return {
+            id: doc.id,
+            userId: data.userId,
+            user: {
+              fullName: userData?.fullName || "",
+              email: userData?.email || "",
+            },
+          };
+        })
+      );
 
       setCoaches(coachesData);
     } catch (err) {
-      console.error('Error loading coaches:', err);
+      console.error("Error loading coaches:", err);
     }
   };
 
   const generateCode = () => {
-    return 'PBP' + Math.random().toString(36).substring(2, 8).toUpperCase();
+    return "PBP" + Math.random().toString(36).substring(2, 8).toUpperCase();
   };
 
   const handleGenerateCodes = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       setIsLoading(true);
-      
+
       const newCode = generateCode();
-      await addDoc(collection(db, 'assessment_codes'), {
+      await addDoc(collection(db, "assessment_codes"), {
         coachId: selectedCoach,
         code: newCode,
         used: false,
-        createdAt: new Date()
+        createdAt: new Date(),
       });
 
       setShowGenerateModal(false);
       loadCodes();
     } catch (err) {
-      console.error('Error generating code:', err);
-      setError('Failed to generate assessment code');
+      console.error("Error generating code:", err);
+      setError("Failed to generate assessment code");
     } finally {
       setIsLoading(false);
     }
@@ -145,8 +149,8 @@ export function AssessmentCodes() {
   return (
     <div className="min-h-screen ai-gradient-bg py-12 px-4">
       <div className="max-w-7xl mx-auto">
-        <Link 
-          to="/admin" 
+        <Link
+          to="/admin"
           className="inline-flex items-center gap-2 text-white/80 hover:text-white mb-8 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
@@ -157,8 +161,12 @@ export function AssessmentCodes() {
           <div className="flex items-center gap-4">
             <Key className="w-12 h-12 text-white" />
             <div>
-              <h1 className="text-3xl font-bold text-white">Assessment Codes</h1>
-              <p className="text-white/80">Generate and manage assessment codes</p>
+              <h1 className="text-3xl font-bold text-white">
+                Assessment Codes
+              </h1>
+              <p className="text-white/80">
+                Generate and manage assessment codes
+              </p>
             </div>
           </div>
           <button
@@ -193,7 +201,7 @@ export function AssessmentCodes() {
                     Assigned to: {code.coach.user.fullName}
                   </div>
                   <div className="text-sm text-white/40">
-                    Status: {code.used ? 'Used' : 'Available'}
+                    Status: {code.used ? "Used" : "Available"}
                   </div>
                 </div>
                 <button
@@ -215,10 +223,14 @@ export function AssessmentCodes() {
               animate={{ opacity: 1, scale: 1 }}
               className="glass-effect rounded-3xl p-8 w-full max-w-lg mx-4"
             >
-              <h2 className="text-2xl font-bold text-white mb-6">Generate Assessment Code</h2>
+              <h2 className="text-2xl font-bold text-white mb-6">
+                Generate Assessment Code
+              </h2>
               <form onSubmit={handleGenerateCodes} className="space-y-6">
                 <div>
-                  <label htmlFor="coach" className="block text-white mb-2">Assign to Coach</label>
+                  <label htmlFor="coach" className="block text-white mb-2">
+                    Assign to Coach
+                  </label>
                   <select
                     id="coach"
                     value={selectedCoach}
@@ -249,7 +261,7 @@ export function AssessmentCodes() {
                     className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 
                       text-white font-medium hover:scale-105 transition-all disabled:opacity-50"
                   >
-                    {isLoading ? 'Generating...' : 'Generate Code'}
+                    {isLoading ? "Generating..." : "Generate Code"}
                   </button>
                 </div>
               </form>

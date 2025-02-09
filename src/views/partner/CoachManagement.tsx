@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
-import { Users, Edit2, Trash2, AlertCircle, ArrowLeft } from 'lucide-react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { auth, db } from '../../lib/firebase';
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { motion } from "framer-motion";
+import { AlertCircle, ArrowLeft, Edit2, Trash2, Users } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { auth, db } from "../../lib/firebase";
 
 interface Coach {
   id: string;
@@ -24,68 +24,71 @@ interface Coach {
 export function PartnerCoachManagement() {
   const [coaches, setCoaches] = useState<Coach[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    loadCoaches();
-  }, []);
+    if (auth?.currentUser?.uid) {
+      loadCoaches();
+    }
+  }, [auth?.currentUser?.uid]);
 
   const loadCoaches = async () => {
     try {
       setIsLoading(true);
       const partnerId = auth.currentUser?.uid;
-      
+
       // Get coaches for this partner
       const coachesQuery = query(
-        collection(db, 'coaches'),
-        where('partnerId', '==', partnerId)
+        collection(db, "coaches"),
+        where("partnerId", "==", partnerId)
       );
       const coachesSnapshot = await getDocs(coachesQuery);
-      
-      const coachesData = await Promise.all(coachesSnapshot.docs.map(async (doc) => {
-        const data = doc.data();
-        
-        // Get user data
-        const userDoc = await getDocs(query(
-          collection(db, 'users'),
-          where('userId', '==', data.userId)
-        ));
-        const userData = userDoc.docs[0]?.data();
-        
-        // Get stats
-        const respondentsQuery = query(
-          collection(db, 'respondents'),
-          where('coachId', '==', data.userId)
-        );
-        const respondentsSnapshot = await getDocs(respondentsQuery);
-        
-        const completedQuery = query(
-          collection(db, 'results'),
-          where('coachId', '==', data.userId)
-        );
-        const completedSnapshot = await getDocs(completedQuery);
 
-        return {
-          id: doc.id,
-          userId: data.userId,
-          assessmentCode: data.assessmentCode,
-          tier: data.tier,
-          aiAnalysisAccess: data.aiAnalysisAccess,
-          user: {
-            fullName: userData?.fullName || '',
-            email: userData?.email || ''
-          },
-          stats: {
-            totalRespondents: respondentsSnapshot.size,
-            completedAssessments: completedSnapshot.size
-          }
-        };
-      }));
+      const coachesData = await Promise.all(
+        coachesSnapshot.docs.map(async (doc) => {
+          const data = doc.data();
+
+          // Get user data
+          const userDoc = await getDocs(
+            query(collection(db, "users"), where("userId", "==", data.userId))
+          );
+          const userData = userDoc.docs[0]?.data();
+
+          // Get stats
+          const respondentsQuery = query(
+            collection(db, "respondents"),
+            where("coachId", "==", data.userId)
+          );
+          const respondentsSnapshot = await getDocs(respondentsQuery);
+
+          const completedQuery = query(
+            collection(db, "results"),
+            where("coachId", "==", data.userId)
+          );
+          const completedSnapshot = await getDocs(completedQuery);
+
+          return {
+            id: doc.id,
+            userId: data.userId,
+            assessmentCode: data.assessmentCode,
+            tier: data.tier,
+            aiAnalysisAccess: data.aiAnalysisAccess,
+            user: {
+              fullName: userData?.fullName || "",
+              email: userData?.email || "",
+            },
+            stats: {
+              totalRespondents: respondentsSnapshot.size,
+              completedAssessments: completedSnapshot.size,
+            },
+          };
+        })
+      );
 
       setCoaches(coachesData);
     } catch (err) {
-      console.error('Error loading coaches:', err);
-      setError('Failed to load coaches');
+      console.error("Error loading coaches:", err);
+      setError("Failed to load coaches");
     } finally {
       setIsLoading(false);
     }
@@ -104,8 +107,8 @@ export function PartnerCoachManagement() {
   return (
     <div className="min-h-screen ai-gradient-bg py-12 px-4">
       <div className="max-w-7xl mx-auto">
-        <Link 
-          to="/partner" 
+        <Link
+          to="/partner"
           className="inline-flex items-center gap-2 text-white/80 hover:text-white mb-8 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
@@ -116,8 +119,12 @@ export function PartnerCoachManagement() {
           <div className="flex items-center gap-4">
             <Users className="w-12 h-12 text-white" />
             <div>
-              <h1 className="text-3xl font-bold text-white">Coach Management</h1>
-              <p className="text-white/80">View and manage your coaching team</p>
+              <h1 className="text-3xl font-bold text-white">
+                Coach Management
+              </h1>
+              <p className="text-white/80">
+                View and manage your coaching team
+              </p>
             </div>
           </div>
         </div>
@@ -153,13 +160,17 @@ export function PartnerCoachManagement() {
                 </div>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => {/* Handle edit */}}
+                    onClick={() => {
+                      /* Handle edit */
+                    }}
                     className="p-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-all"
                   >
                     <Edit2 className="w-5 h-5" />
                   </button>
                   <button
-                    onClick={() => {/* Handle delete */}}
+                    onClick={() => {
+                      /* Handle delete */
+                    }}
                     className="p-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-all"
                   >
                     <Trash2 className="w-5 h-5" />

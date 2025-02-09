@@ -1,21 +1,40 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Link, useNavigate } from 'react-router-dom';
-import { Users, Plus, Edit2, Trash2, AlertCircle, ArrowLeft, Shield, X } from 'lucide-react';
-import { collection, getDocs, doc, setDoc, query, where } from 'firebase/firestore';
-import { createUserWithEmailAndPassword, getAuth } from 'firebase/auth';
-import { initializeApp } from 'firebase/app';
-import { auth, db } from '../../lib/firebase';
+import { initializeApp } from "firebase/app";
+import { createUserWithEmailAndPassword, getAuth } from "firebase/auth";
+import {
+  collection,
+  doc,
+  getDocs,
+  query,
+  setDoc,
+  where,
+} from "firebase/firestore";
+import { motion } from "framer-motion";
+import {
+  AlertCircle,
+  ArrowLeft,
+  Edit2,
+  Plus,
+  Shield,
+  Trash2,
+  Users,
+  X,
+} from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { auth, db } from "../../lib/firebase";
 
 // Create a separate Firebase app instance for partner creation
-const partnerAuthApp = initializeApp({
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
-}, 'partnerAuth');
+const partnerAuthApp = initializeApp(
+  {
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  },
+  "partnerAuth"
+);
 
 // Get auth instance for partner creation
 const partnerAuth = getAuth(partnerAuthApp);
@@ -42,7 +61,7 @@ export function PartnerManagement() {
   const navigate = useNavigate();
   const [partners, setPartners] = useState<Partner[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
@@ -50,82 +69,85 @@ export function PartnerManagement() {
     maxCoaches: 5,
     permissions: {
       manageCoaches: true,
-      createAssessmentCodes: true
-    }
+      createAssessmentCodes: true,
+    },
   });
   const [newPartner, setNewPartner] = useState({
-    email: '',
-    password: '',
-    fullName: '',
+    email: "",
+    password: "",
+    fullName: "",
     maxCoaches: 5,
     permissions: {
       manageCoaches: true,
-      createAssessmentCodes: true
-    }
+      createAssessmentCodes: true,
+    },
   });
 
   useEffect(() => {
-    loadPartners();
-  }, []);
+    if (auth?.currentUser?.uid) {
+      loadPartners();
+    }
+  }, [auth?.currentUser?.uid]);
 
   const loadPartners = async () => {
     try {
       setIsLoading(true);
-      const partnersQuery = query(collection(db, 'partners'));
+      const partnersQuery = query(collection(db, "partners"));
       const partnersSnapshot = await getDocs(partnersQuery);
-      
-      const partnersData = await Promise.all(partnersSnapshot.docs.map(async (doc) => {
-        const data = doc.data();
-        
-        // Get user data
-        const userDoc = await getDocs(query(
-          collection(db, 'users'),
-          where('userId', '==', data.userId)
-        ));
-        const userData = userDoc.docs[0]?.data();
-        
-        // Get coaches count
-        const coachesQuery = query(
-          collection(db, 'coaches'),
-          where('partnerId', '==', data.userId)
-        );
-        const coachesSnapshot = await getDocs(coachesQuery);
-        const coachIds = coachesSnapshot.docs.map(doc => doc.data().userId);
-        
-        // Get total respondents only if there are coaches
-        let respondentsCount = 0;
-        if (coachIds.length > 0) {
-          const respondentsQuery = query(
-            collection(db, 'respondents'),
-            where('coachId', 'in', coachIds)
-          );
-          const respondentsSnapshot = await getDocs(respondentsQuery);
-          respondentsCount = respondentsSnapshot.size;
-        }
 
-        return {
-          id: doc.id,
-          userId: data.userId,
-          maxCoaches: data.maxCoaches,
-          permissions: data.permissions || {
-            manageCoaches: true,
-            createAssessmentCodes: true
-          },
-          stats: {
-            totalCoaches: coachesSnapshot.size,
-            totalRespondents: respondentsCount
-          },
-          user: {
-            fullName: userData?.fullName || '',
-            email: userData?.email || ''
+      const partnersData = await Promise.all(
+        partnersSnapshot.docs.map(async (doc) => {
+          const data = doc.data();
+
+          // Get user data
+          const userDoc = await getDocs(
+            query(collection(db, "users"), where("userId", "==", data.userId))
+          );
+          const userData = userDoc.docs[0]?.data();
+
+          // Get coaches count
+          const coachesQuery = query(
+            collection(db, "coaches"),
+            where("partnerId", "==", data.userId)
+          );
+          const coachesSnapshot = await getDocs(coachesQuery);
+          const coachIds = coachesSnapshot.docs.map((doc) => doc.data().userId);
+
+          // Get total respondents only if there are coaches
+          let respondentsCount = 0;
+          if (coachIds.length > 0) {
+            const respondentsQuery = query(
+              collection(db, "respondents"),
+              where("coachId", "in", coachIds)
+            );
+            const respondentsSnapshot = await getDocs(respondentsQuery);
+            respondentsCount = respondentsSnapshot.size;
           }
-        };
-      }));
+
+          return {
+            id: doc.id,
+            userId: data.userId,
+            maxCoaches: data.maxCoaches,
+            permissions: data.permissions || {
+              manageCoaches: true,
+              createAssessmentCodes: true,
+            },
+            stats: {
+              totalCoaches: coachesSnapshot.size,
+              totalRespondents: respondentsCount,
+            },
+            user: {
+              fullName: userData?.fullName || "",
+              email: userData?.email || "",
+            },
+          };
+        })
+      );
 
       setPartners(partnersData);
     } catch (err) {
-      console.error('Error loading partners:', err);
-      setError('Failed to load partners');
+      console.error("Error loading partners:", err);
+      setError("Failed to load partners");
     } finally {
       setIsLoading(false);
     }
@@ -135,7 +157,7 @@ export function PartnerManagement() {
     setSelectedPartner(partner);
     setEditForm({
       maxCoaches: partner.maxCoaches,
-      permissions: { ...partner.permissions }
+      permissions: { ...partner.permissions },
     });
     setShowEditModal(true);
   };
@@ -146,22 +168,25 @@ export function PartnerManagement() {
 
     try {
       setIsLoading(true);
-      setError('');
+      setError("");
 
       // Update partner document
-      const partnerRef = doc(db, 'partners', selectedPartner.id);
-      await setDoc(partnerRef, {
-        maxCoaches: editForm.maxCoaches,
-        permissions: editForm.permissions,
-        updatedAt: new Date()
-      }, { merge: true });
+      const partnerRef = doc(db, "partners", selectedPartner.id);
+      await setDoc(
+        partnerRef,
+        {
+          maxCoaches: editForm.maxCoaches,
+          permissions: editForm.permissions,
+          updatedAt: new Date(),
+        },
+        { merge: true }
+      );
 
       setShowEditModal(false);
       await loadPartners();
-
     } catch (err) {
-      console.error('Error updating partner:', err);
-      setError('Failed to update partner');
+      console.error("Error updating partner:", err);
+      setError("Failed to update partner");
     } finally {
       setIsLoading(false);
     }
@@ -175,14 +200,14 @@ export function PartnerManagement() {
 
       // Verify admin status using the current admin's ID
       const adminQuery = query(
-        collection(db, 'users'),
-        where('userId', '==', adminId),
-        where('role', '==', 'admin')
+        collection(db, "users"),
+        where("userId", "==", adminId),
+        where("role", "==", "admin")
       );
       const adminSnapshot = await getDocs(adminQuery);
-      
+
       if (adminSnapshot.empty) {
-        throw new Error('Insufficient permissions');
+        throw new Error("Insufficient permissions");
       }
 
       // Create Firebase auth user for partner using separate auth instance
@@ -193,23 +218,23 @@ export function PartnerManagement() {
       );
 
       // Create user document with proper role using setDoc with auth UID
-      await setDoc(doc(db, 'users', partnerUser.uid), {
+      await setDoc(doc(db, "users", partnerUser.uid), {
         userId: partnerUser.uid,
         email: newPartner.email,
         fullName: newPartner.fullName,
-        role: 'partner',
-        subscription_tier: 'partner',
+        role: "partner",
+        subscription_tier: "partner",
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       });
 
       // Create partner record using setDoc with auth UID
-      await setDoc(doc(db, 'partners', partnerUser.uid), {
+      await setDoc(doc(db, "partners", partnerUser.uid), {
         userId: partnerUser.uid,
         maxCoaches: newPartner.maxCoaches,
         permissions: newPartner.permissions,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       });
 
       // Sign out the partner user from the secondary auth instance
@@ -219,10 +244,12 @@ export function PartnerManagement() {
       loadPartners();
 
       // Show success message with credentials
-      alert(`Partner account created successfully!\n\nEmail: ${newPartner.email}\nPassword: ${newPartner.password}\n\nPlease share these credentials with the partner securely.`);
+      alert(
+        `Partner account created successfully!\n\nEmail: ${newPartner.email}\nPassword: ${newPartner.password}\n\nPlease share these credentials with the partner securely.`
+      );
     } catch (err) {
-      console.error('Error adding partner:', err);
-      setError('Failed to add partner');
+      console.error("Error adding partner:", err);
+      setError("Failed to add partner");
     } finally {
       setIsLoading(false);
     }
@@ -241,8 +268,8 @@ export function PartnerManagement() {
   return (
     <div className="min-h-screen ai-gradient-bg py-12 px-4">
       <div className="max-w-7xl mx-auto">
-        <Link 
-          to="/admin" 
+        <Link
+          to="/admin"
           className="inline-flex items-center gap-2 text-white/80 hover:text-white mb-8 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
@@ -253,8 +280,12 @@ export function PartnerManagement() {
           <div className="flex items-center gap-4">
             <Users className="w-12 h-12 text-white" />
             <div>
-              <h1 className="text-3xl font-bold text-white">Partner Management</h1>
-              <p className="text-white/80">Create and manage partner accounts</p>
+              <h1 className="text-3xl font-bold text-white">
+                Partner Management
+              </h1>
+              <p className="text-white/80">
+                Create and manage partner accounts
+              </p>
             </div>
           </div>
           <button
@@ -304,7 +335,9 @@ export function PartnerManagement() {
                     <Edit2 className="w-5 h-5" />
                   </button>
                   <button
-                    onClick={() => {/* Handle delete */}}
+                    onClick={() => {
+                      /* Handle delete */
+                    }}
                     className="p-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-all"
                   >
                     <Trash2 className="w-5 h-5" />
@@ -324,7 +357,9 @@ export function PartnerManagement() {
               className="glass-effect rounded-3xl p-8 w-full max-w-lg mx-4"
             >
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-white">Add New Partner</h2>
+                <h2 className="text-2xl font-bold text-white">
+                  Add New Partner
+                </h2>
                 <button
                   onClick={() => setShowAddModal(false)}
                   className="p-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-all"
@@ -334,12 +369,19 @@ export function PartnerManagement() {
               </div>
               <form onSubmit={handleAddPartner} className="space-y-6">
                 <div>
-                  <label htmlFor="fullName" className="block text-white mb-2">Full Name</label>
+                  <label htmlFor="fullName" className="block text-white mb-2">
+                    Full Name
+                  </label>
                   <input
                     type="text"
                     id="fullName"
                     value={newPartner.fullName}
-                    onChange={(e) => setNewPartner(prev => ({ ...prev, fullName: e.target.value }))}
+                    onChange={(e) =>
+                      setNewPartner((prev) => ({
+                        ...prev,
+                        fullName: e.target.value,
+                      }))
+                    }
                     className="w-full px-4 py-3 rounded-xl bg-white/10 text-white border border-white/20 
                       focus:border-white/40 focus:outline-none"
                     required
@@ -347,12 +389,19 @@ export function PartnerManagement() {
                 </div>
 
                 <div>
-                  <label htmlFor="email" className="block text-white mb-2">Email Address</label>
+                  <label htmlFor="email" className="block text-white mb-2">
+                    Email Address
+                  </label>
                   <input
                     type="email"
                     id="email"
                     value={newPartner.email}
-                    onChange={(e) => setNewPartner(prev => ({ ...prev, email: e.target.value }))}
+                    onChange={(e) =>
+                      setNewPartner((prev) => ({
+                        ...prev,
+                        email: e.target.value,
+                      }))
+                    }
                     className="w-full px-4 py-3 rounded-xl bg-white/10 text-white border border-white/20 
                       focus:border-white/40 focus:outline-none"
                     required
@@ -360,12 +409,19 @@ export function PartnerManagement() {
                 </div>
 
                 <div>
-                  <label htmlFor="password" className="block text-white mb-2">Initial Password</label>
+                  <label htmlFor="password" className="block text-white mb-2">
+                    Initial Password
+                  </label>
                   <input
                     type="password"
                     id="password"
                     value={newPartner.password}
-                    onChange={(e) => setNewPartner(prev => ({ ...prev, password: e.target.value }))}
+                    onChange={(e) =>
+                      setNewPartner((prev) => ({
+                        ...prev,
+                        password: e.target.value,
+                      }))
+                    }
                     className="w-full px-4 py-3 rounded-xl bg-white/10 text-white border border-white/20 
                       focus:border-white/40 focus:outline-none"
                     required
@@ -375,13 +431,20 @@ export function PartnerManagement() {
                 </div>
 
                 <div>
-                  <label htmlFor="maxCoaches" className="block text-white mb-2">Maximum Coaches</label>
+                  <label htmlFor="maxCoaches" className="block text-white mb-2">
+                    Maximum Coaches
+                  </label>
                   <input
                     type="number"
                     id="maxCoaches"
                     min="1"
                     value={newPartner.maxCoaches}
-                    onChange={(e) => setNewPartner(prev => ({ ...prev, maxCoaches: parseInt(e.target.value) }))}
+                    onChange={(e) =>
+                      setNewPartner((prev) => ({
+                        ...prev,
+                        maxCoaches: parseInt(e.target.value),
+                      }))
+                    }
                     className="w-full px-4 py-3 rounded-xl bg-white/10 text-white border border-white/20 
                       focus:border-white/40 focus:outline-none"
                     required
@@ -394,10 +457,15 @@ export function PartnerManagement() {
                       type="checkbox"
                       id="manageCoaches"
                       checked={newPartner.permissions.manageCoaches}
-                      onChange={(e) => setNewPartner(prev => ({
-                        ...prev,
-                        permissions: { ...prev.permissions, manageCoaches: e.target.checked }
-                      }))}
+                      onChange={(e) =>
+                        setNewPartner((prev) => ({
+                          ...prev,
+                          permissions: {
+                            ...prev.permissions,
+                            manageCoaches: e.target.checked,
+                          },
+                        }))
+                      }
                       className="rounded border-white/20"
                     />
                     <label htmlFor="manageCoaches" className="text-white">
@@ -410,10 +478,15 @@ export function PartnerManagement() {
                       type="checkbox"
                       id="createCodes"
                       checked={newPartner.permissions.createAssessmentCodes}
-                      onChange={(e) => setNewPartner(prev => ({
-                        ...prev,
-                        permissions: { ...prev.permissions, createAssessmentCodes: e.target.checked }
-                      }))}
+                      onChange={(e) =>
+                        setNewPartner((prev) => ({
+                          ...prev,
+                          permissions: {
+                            ...prev.permissions,
+                            createAssessmentCodes: e.target.checked,
+                          },
+                        }))
+                      }
                       className="rounded border-white/20"
                     />
                     <label htmlFor="createCodes" className="text-white">
@@ -438,7 +511,7 @@ export function PartnerManagement() {
                       flex items-center gap-2"
                   >
                     <Shield className="w-5 h-5" />
-                    {isLoading ? 'Adding...' : 'Add Partner'}
+                    {isLoading ? "Adding..." : "Add Partner"}
                   </button>
                 </div>
               </form>
@@ -465,13 +538,23 @@ export function PartnerManagement() {
               </div>
               <form onSubmit={handleEditSubmit} className="space-y-6">
                 <div>
-                  <label htmlFor="editMaxCoaches" className="block text-white mb-2">Maximum Coaches</label>
+                  <label
+                    htmlFor="editMaxCoaches"
+                    className="block text-white mb-2"
+                  >
+                    Maximum Coaches
+                  </label>
                   <input
                     type="number"
                     id="editMaxCoaches"
                     min="1"
                     value={editForm.maxCoaches}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, maxCoaches: parseInt(e.target.value) }))}
+                    onChange={(e) =>
+                      setEditForm((prev) => ({
+                        ...prev,
+                        maxCoaches: parseInt(e.target.value),
+                      }))
+                    }
                     className="w-full px-4 py-3 rounded-xl bg-white/10 text-white border border-white/20 
                       focus:border-white/40 focus:outline-none"
                     required
@@ -484,10 +567,15 @@ export function PartnerManagement() {
                       type="checkbox"
                       id="editManageCoaches"
                       checked={editForm.permissions.manageCoaches}
-                      onChange={(e) => setEditForm(prev => ({
-                        ...prev,
-                        permissions: { ...prev.permissions, manageCoaches: e.target.checked }
-                      }))}
+                      onChange={(e) =>
+                        setEditForm((prev) => ({
+                          ...prev,
+                          permissions: {
+                            ...prev.permissions,
+                            manageCoaches: e.target.checked,
+                          },
+                        }))
+                      }
                       className="rounded border-white/20"
                     />
                     <label htmlFor="editManageCoaches" className="text-white">
@@ -500,10 +588,15 @@ export function PartnerManagement() {
                       type="checkbox"
                       id="editCreateCodes"
                       checked={editForm.permissions.createAssessmentCodes}
-                      onChange={(e) => setEditForm(prev => ({
-                        ...prev,
-                        permissions: { ...prev.permissions, createAssessmentCodes: e.target.checked }
-                      }))}
+                      onChange={(e) =>
+                        setEditForm((prev) => ({
+                          ...prev,
+                          permissions: {
+                            ...prev.permissions,
+                            createAssessmentCodes: e.target.checked,
+                          },
+                        }))
+                      }
                       className="rounded border-white/20"
                     />
                     <label htmlFor="editCreateCodes" className="text-white">
@@ -528,7 +621,7 @@ export function PartnerManagement() {
                       flex items-center gap-2"
                   >
                     <Shield className="w-5 h-5" />
-                    {isLoading ? 'Saving...' : 'Save Changes'}
+                    {isLoading ? "Saving..." : "Save Changes"}
                   </button>
                 </div>
               </form>

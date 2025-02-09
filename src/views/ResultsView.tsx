@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
-import { Header } from '../components/Header';
-import { ResultsGraph } from '../components/ResultsGraph';
-import { HarmonicGraph } from '../components/HarmonicGraph';
-import { useAssessment } from '../contexts/AssessmentContext';
-import { useResults } from '../hooks/useResults';
-import { AlertCircle, Brain, Save } from 'lucide-react';
-import { auth, db } from '../lib/firebase';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { motion } from "framer-motion";
+import { AlertCircle, Brain, Save } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { HarmonicGraph } from "../components/HarmonicGraph";
+import { Header } from "../components/Header";
+import { ResultsGraph } from "../components/ResultsGraph";
+import { useAssessment } from "../contexts/AssessmentContext";
+import { useResults } from "../hooks/useResults";
+import { auth, db } from "../lib/firebase";
 
 export function ResultsView() {
   const { scores, harmonicScores } = useAssessment();
@@ -17,70 +17,74 @@ export function ResultsView() {
   const [isCheckingAccess, setIsCheckingAccess] = useState(true);
   const [isSaved, setIsSaved] = useState(false);
 
-  useEffect(() => {
-    const checkAccess = async () => {
-      if (!auth.currentUser) return;
+  const checkAccess = async () => {
+    if (!auth.currentUser) return;
 
-      try {
-        // Get the respondent's info
-        const respondentQuery = query(
-          collection(db, 'respondents'),
-          where('userId', '==', auth.currentUser.uid)
-        );
-        const respondentDocs = await getDocs(respondentQuery);
-        
-        if (!respondentDocs.empty) {
-          const respondentData = respondentDocs.docs[0].data();
-          const coachId = respondentData.coachId;
-          
-          // Check if results are already saved
-          setIsSaved(Boolean(respondentData.lastAssessmentDate));
-          
-          // Check AI access
-          if (coachId) {
-            const coachQuery = query(
-              collection(db, 'coaches'),
-              where('userId', '==', coachId)
+    try {
+      // Get the respondent's info
+      const respondentQuery = query(
+        collection(db, "respondents"),
+        where("userId", "==", auth.currentUser.uid)
+      );
+      const respondentDocs = await getDocs(respondentQuery);
+
+      if (!respondentDocs.empty) {
+        const respondentData = respondentDocs.docs[0].data();
+        const coachId = respondentData.coachId;
+
+        // Check if results are already saved
+        setIsSaved(Boolean(respondentData.lastAssessmentDate));
+
+        // Check AI access
+        if (coachId) {
+          const coachQuery = query(
+            collection(db, "coaches"),
+            where("userId", "==", coachId)
+          );
+          const coachDocs = await getDocs(coachQuery);
+
+          if (!coachDocs.empty) {
+            const coachData = coachDocs.docs[0].data();
+            // Only show AI access for advanced and partner tiers
+            setHasAiAccess(
+              coachData.tier === "advanced" || coachData.tier === "partner"
             );
-            const coachDocs = await getDocs(coachQuery);
-            
-            if (!coachDocs.empty) {
-              const coachData = coachDocs.docs[0].data();
-              // Only show AI access for advanced and partner tiers
-              setHasAiAccess(coachData.tier === 'advanced' || coachData.tier === 'partner');
-            } else {
-              setHasAiAccess(false);
-            }
           } else {
             setHasAiAccess(false);
           }
         } else {
           setHasAiAccess(false);
         }
-      } catch (err) {
-        console.error('Error checking access:', err);
+      } else {
         setHasAiAccess(false);
-      } finally {
-        setIsCheckingAccess(false);
       }
-    };
+    } catch (err) {
+      console.error("Error checking access:", err);
+      setHasAiAccess(false);
+    } finally {
+      setIsCheckingAccess(false);
+    }
+  };
 
-    checkAccess();
-  }, []);
+  useEffect(() => {
+    if (auth?.currentUser?.uid) {
+      checkAccess();
+    }
+  }, [auth?.currentUser?.uid]);
 
   const handleSave = async () => {
     if (!auth.currentUser) return;
-    
+
     try {
       await saveResults({
         userId: auth.currentUser.uid,
         scores: scores!,
         harmonicScores: harmonicScores!,
-        completedAt: new Date()
+        completedAt: new Date(),
       });
       setIsSaved(true);
     } catch (err) {
-      console.error('Error saving results:', err);
+      console.error("Error saving results:", err);
     }
   };
 
@@ -119,7 +123,7 @@ export function ResultsView() {
         )}
 
         <div className="grid md:grid-cols-2 gap-8 mb-8">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="glass-effect rounded-3xl p-8"
@@ -157,10 +161,10 @@ export function ResultsView() {
                 text-white font-medium hover:scale-105 transition-all disabled:opacity-50"
             >
               <Save className="w-5 h-5" />
-              {isLoading ? 'Saving Results...' : 'Save Results'}
+              {isLoading ? "Saving Results..." : "Save Results"}
             </button>
           )}
-          
+
           {!isCheckingAccess && hasAiAccess && (
             <Link
               to="/analysis"
@@ -171,11 +175,11 @@ export function ResultsView() {
               Get AI Analysis
             </Link>
           )}
-          
+
           {!isCheckingAccess && !hasAiAccess && (
             <div className="text-white/60 text-center">
-              AI Analysis is not available with your current plan.
-              Please contact your coach for more information.
+              AI Analysis is not available with your current plan. Please
+              contact your coach for more information.
             </div>
           )}
         </motion.div>

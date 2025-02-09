@@ -1,64 +1,66 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
-import { Users, Key, Brain, AlertCircle } from 'lucide-react';
-import { onAuthStateChanged } from 'firebase/auth';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { auth, db } from '../lib/firebase';
-import { isUserAdmin } from '../lib/firebase-admin';
+import { onAuthStateChanged } from "firebase/auth";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { motion } from "framer-motion";
+import { AlertCircle, Brain, Key, Users } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { auth, db } from "../lib/firebase";
+import { isUserAdmin } from "../lib/firebase-admin";
 
 export function AdminDashboard() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [stats, setStats] = useState({
     totalCoaches: 0,
     totalPartners: 0,
     totalRespondents: 0,
-    activeAssessments: 0
+    activeAssessments: 0,
   });
 
   useEffect(() => {
     checkAdminAccess();
-    loadDashboardStats();
-  }, []);
+    if (auth?.currentUser?.uid) {
+      loadDashboardStats();
+    }
+  }, [auth?.currentUser?.uid]);
 
   const checkAdminAccess = async () => {
     try {
       const unsubscribe = onAuthStateChanged(auth, async (user) => {
         if (!user) {
-          navigate('/login');
+          navigate("/login");
           return;
         }
 
         const isAdmin = await isUserAdmin(user.uid);
         if (!isAdmin) {
-          navigate('/');
+          navigate("/");
           return;
         }
       });
 
       return () => unsubscribe();
     } catch (err) {
-      console.error('Admin access check failed:', err);
-      navigate('/');
+      console.error("Admin access check failed:", err);
+      navigate("/");
     }
   };
 
   const loadDashboardStats = async () => {
     try {
       setIsLoading(true);
-      
+
       // Get coaches count
-      const coachesSnapshot = await getDocs(collection(db, 'coaches'));
+      const coachesSnapshot = await getDocs(collection(db, "coaches"));
       const coachesCount = coachesSnapshot.size;
 
       // Get partners count
-      const partnersSnapshot = await getDocs(collection(db, 'partners'));
+      const partnersSnapshot = await getDocs(collection(db, "partners"));
       const partnersCount = partnersSnapshot.size;
 
       // Get respondents count
-      const respondentsSnapshot = await getDocs(collection(db, 'respondents'));
+      const respondentsSnapshot = await getDocs(collection(db, "respondents"));
       const respondentsCount = respondentsSnapshot.size;
 
       // Get active assessments (completed in last 30 days)
@@ -66,8 +68,8 @@ export function AdminDashboard() {
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
       const activeQuery = query(
-        collection(db, 'respondents'),
-        where('createdAt', '>=', thirtyDaysAgo)
+        collection(db, "respondents"),
+        where("createdAt", ">=", thirtyDaysAgo)
       );
       const activeSnapshot = await getDocs(activeQuery);
       const activeCount = activeSnapshot.size;
@@ -76,12 +78,11 @@ export function AdminDashboard() {
         totalCoaches: coachesCount,
         totalPartners: partnersCount,
         totalRespondents: respondentsCount,
-        activeAssessments: activeCount
+        activeAssessments: activeCount,
       });
-
     } catch (err) {
-      console.error('Failed to load dashboard stats:', err);
-      setError('Failed to load dashboard statistics');
+      console.error("Failed to load dashboard stats:", err);
+      setError("Failed to load dashboard statistics");
     } finally {
       setIsLoading(false);
     }
@@ -123,7 +124,9 @@ export function AdminDashboard() {
             className="glass-effect rounded-2xl p-6"
           >
             <Users className="w-8 h-8 text-blue-400 mb-4" />
-            <div className="text-4xl font-bold text-white mb-2">{stats.totalCoaches}</div>
+            <div className="text-4xl font-bold text-white mb-2">
+              {stats.totalCoaches}
+            </div>
             <div className="text-white/80">Active Coaches</div>
           </motion.div>
 
@@ -134,7 +137,9 @@ export function AdminDashboard() {
             className="glass-effect rounded-2xl p-6"
           >
             <Users className="w-8 h-8 text-purple-400 mb-4" />
-            <div className="text-4xl font-bold text-white mb-2">{stats.totalPartners}</div>
+            <div className="text-4xl font-bold text-white mb-2">
+              {stats.totalPartners}
+            </div>
             <div className="text-white/80">Active Partners</div>
           </motion.div>
 
@@ -145,7 +150,9 @@ export function AdminDashboard() {
             className="glass-effect rounded-2xl p-6"
           >
             <Key className="w-8 h-8 text-emerald-400 mb-4" />
-            <div className="text-4xl font-bold text-white mb-2">{stats.totalRespondents}</div>
+            <div className="text-4xl font-bold text-white mb-2">
+              {stats.totalRespondents}
+            </div>
             <div className="text-white/80">Total Respondents</div>
           </motion.div>
 
@@ -156,7 +163,9 @@ export function AdminDashboard() {
             className="glass-effect rounded-2xl p-6"
           >
             <Brain className="w-8 h-8 text-blue-400 mb-4" />
-            <div className="text-4xl font-bold text-white mb-2">{stats.activeAssessments}</div>
+            <div className="text-4xl font-bold text-white mb-2">
+              {stats.activeAssessments}
+            </div>
             <div className="text-white/80">Assessments (30d)</div>
           </motion.div>
         </div>
@@ -166,46 +175,56 @@ export function AdminDashboard() {
           <h2 className="text-2xl font-bold text-white mb-6">Quick Actions</h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
             <button
-              onClick={() => navigate('/admin/partners')}
+              onClick={() => navigate("/admin/partners")}
               className="p-4 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-all text-left"
             >
               <Users className="w-6 h-6 mb-2" />
               <div className="font-medium">Manage Partners</div>
-              <div className="text-sm text-white/60">Create and manage partner accounts</div>
+              <div className="text-sm text-white/60">
+                Create and manage partner accounts
+              </div>
             </button>
 
             <button
-              onClick={() => navigate('/admin/coaches')}
+              onClick={() => navigate("/admin/coaches")}
               className="p-4 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-all text-left"
             >
               <Users className="w-6 h-6 mb-2" />
               <div className="font-medium">Manage Coaches</div>
-              <div className="text-sm text-white/60">Create and manage coach accounts</div>
+              <div className="text-sm text-white/60">
+                Create and manage coach accounts
+              </div>
             </button>
 
             <button
-              onClick={() => navigate('/admin/codes')}
+              onClick={() => navigate("/admin/codes")}
               className="p-4 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-all text-left"
             >
               <Key className="w-6 h-6 mb-2" />
               <div className="font-medium">Assessment Codes</div>
-              <div className="text-sm text-white/60">Generate and track assessment codes</div>
+              <div className="text-sm text-white/60">
+                Generate and track assessment codes
+              </div>
             </button>
 
             <button
-              onClick={() => navigate('/admin/analytics')}
+              onClick={() => navigate("/admin/analytics")}
               className="p-4 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-all text-left"
             >
               <Brain className="w-6 h-6 mb-2" />
               <div className="font-medium">Analytics</div>
-              <div className="text-sm text-white/60">View detailed system analytics</div>
+              <div className="text-sm text-white/60">
+                View detailed system analytics
+              </div>
             </button>
           </div>
         </div>
 
         {/* Recent Activity */}
         <div className="glass-effect rounded-3xl p-8">
-          <h2 className="text-2xl font-bold text-white mb-6">Recent Activity</h2>
+          <h2 className="text-2xl font-bold text-white mb-6">
+            Recent Activity
+          </h2>
           <div className="text-white/60 text-center py-8">
             Activity feed coming soon...
           </div>

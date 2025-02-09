@@ -1,22 +1,34 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Link, useNavigate } from 'react-router-dom';
-import { Users, Plus, Edit2, Trash2, AlertCircle, ArrowLeft, Shield, X } from 'lucide-react';
-import { collection, getDocs, doc, setDoc, query, where } from 'firebase/firestore';
-import { createUserWithEmailAndPassword, getAuth } from 'firebase/auth';
-import { initializeApp } from 'firebase/app';
-import { auth, db } from '../../lib/firebase';
-import { createCoachAccount } from '../../lib/auth';
+import { initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { motion } from "framer-motion";
+import {
+  AlertCircle,
+  ArrowLeft,
+  Edit2,
+  Plus,
+  Shield,
+  Trash2,
+  Users,
+  X,
+} from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { createCoachAccount } from "../../lib/auth";
+import { auth, db } from "../../lib/firebase";
 
 // Create a separate Firebase app instance for coach creation
-const coachAuthApp = initializeApp({
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
-}, 'coachAuth');
+const coachAuthApp = initializeApp(
+  {
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  },
+  "coachAuth"
+);
 
 // Get auth instance for coach creation
 const coachAuth = getAuth(coachAuthApp);
@@ -41,69 +53,72 @@ export function CoachManagement() {
   const navigate = useNavigate();
   const [coaches, setCoaches] = useState<Coach[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [newCoach, setNewCoach] = useState({
-    email: '',
-    password: '',
-    fullName: '',
-    tier: 'basic'
+    email: "",
+    password: "",
+    fullName: "",
+    tier: "basic",
   });
 
   useEffect(() => {
-    loadCoaches();
-  }, []);
+    if (auth?.currentUser?.uid) {
+      loadCoaches();
+    }
+  }, [auth?.currentUser?.uid]);
 
   const loadCoaches = async () => {
     try {
       setIsLoading(true);
-      const coachesRef = collection(db, 'coaches');
+      const coachesRef = collection(db, "coaches");
       const coachesSnapshot = await getDocs(coachesRef);
-      
-      const coachesData = await Promise.all(coachesSnapshot.docs.map(async (doc) => {
-        const data = doc.data();
-        
-        // Get user data
-        const userDoc = await getDocs(query(
-          collection(db, 'users'),
-          where('userId', '==', data.userId)
-        ));
-        const userData = userDoc.docs[0]?.data();
-        
-        // Get stats
-        const respondentsQuery = query(
-          collection(db, 'respondents'),
-          where('coachId', '==', data.userId)
-        );
-        const respondentsSnapshot = await getDocs(respondentsQuery);
-        
-        const completedQuery = query(
-          collection(db, 'results'),
-          where('coachId', '==', data.userId)
-        );
-        const completedSnapshot = await getDocs(completedQuery);
 
-        return {
-          id: doc.id,
-          userId: data.userId,
-          assessmentCode: data.assessmentCode,
-          tier: data.tier,
-          aiAnalysisAccess: data.aiAnalysisAccess,
-          user: {
-            fullName: userData?.fullName || '',
-            email: userData?.email || ''
-          },
-          stats: {
-            totalRespondents: respondentsSnapshot.size,
-            completedAssessments: completedSnapshot.size
-          }
-        };
-      }));
+      const coachesData = await Promise.all(
+        coachesSnapshot.docs.map(async (doc) => {
+          const data = doc.data();
+
+          // Get user data
+          const userDoc = await getDocs(
+            query(collection(db, "users"), where("userId", "==", data.userId))
+          );
+          const userData = userDoc.docs[0]?.data();
+
+          // Get stats
+          const respondentsQuery = query(
+            collection(db, "respondents"),
+            where("coachId", "==", data.userId)
+          );
+          const respondentsSnapshot = await getDocs(respondentsQuery);
+
+          const completedQuery = query(
+            collection(db, "results"),
+            where("coachId", "==", data.userId)
+          );
+          const completedSnapshot = await getDocs(completedQuery);
+
+          return {
+            id: doc.id,
+            userId: data.userId,
+            assessmentCode: data.assessmentCode,
+            tier: data.tier,
+            aiAnalysisAccess: data.aiAnalysisAccess,
+            user: {
+              fullName: userData?.fullName || "",
+              email: userData?.email || "",
+            },
+            stats: {
+              totalRespondents: respondentsSnapshot.size,
+              completedAssessments: completedSnapshot.size,
+            },
+          };
+        })
+      );
 
       setCoaches(coachesData);
     } catch (err) {
-      console.error('Error loading coaches:', err);
-      setError('Failed to load coaches');
+      console.error("Error loading coaches:", err);
+      setError("Failed to load coaches");
     } finally {
       setIsLoading(false);
     }
@@ -117,24 +132,28 @@ export function CoachManagement() {
       const coachId = await createCoachAccount(coachAuth, {
         ...newCoach,
         assessmentCode: generateAssessmentCode(),
-        aiAnalysisAccess: ['basic_plus', 'advanced', 'partner'].includes(newCoach.tier)
+        aiAnalysisAccess: ["basic_plus", "advanced", "partner"].includes(
+          newCoach.tier
+        ),
       });
 
       setShowAddModal(false);
       loadCoaches();
 
       // Show success message with credentials
-      alert(`Coach account created successfully!\n\nEmail: ${newCoach.email}\nPassword: ${newCoach.password}\n\nPlease share these credentials with the coach securely.`);
+      alert(
+        `Coach account created successfully!\n\nEmail: ${newCoach.email}\nPassword: ${newCoach.password}\n\nPlease share these credentials with the coach securely.`
+      );
     } catch (err) {
-      console.error('Error adding coach:', err);
-      setError('Failed to add coach');
+      console.error("Error adding coach:", err);
+      setError("Failed to add coach");
     } finally {
       setIsLoading(false);
     }
   };
 
   const generateAssessmentCode = () => {
-    return 'PBP' + Math.random().toString(36).substring(2, 8).toUpperCase();
+    return "PBP" + Math.random().toString(36).substring(2, 8).toUpperCase();
   };
 
   if (isLoading) {
@@ -150,8 +169,8 @@ export function CoachManagement() {
   return (
     <div className="min-h-screen ai-gradient-bg py-12 px-4">
       <div className="max-w-7xl mx-auto">
-        <Link 
-          to="/admin" 
+        <Link
+          to="/admin"
           className="inline-flex items-center gap-2 text-white/80 hover:text-white mb-8 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
@@ -162,7 +181,9 @@ export function CoachManagement() {
           <div className="flex items-center gap-4">
             <Users className="w-12 h-12 text-white" />
             <div>
-              <h1 className="text-3xl font-bold text-white">Coach Management</h1>
+              <h1 className="text-3xl font-bold text-white">
+                Coach Management
+              </h1>
               <p className="text-white/80">Create and manage coach accounts</p>
             </div>
           </div>
@@ -207,13 +228,17 @@ export function CoachManagement() {
                 </div>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => {/* Handle edit */}}
+                    onClick={() => {
+                      /* Handle edit */
+                    }}
                     className="p-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-all"
                   >
                     <Edit2 className="w-5 h-5" />
                   </button>
                   <button
-                    onClick={() => {/* Handle delete */}}
+                    onClick={() => {
+                      /* Handle delete */
+                    }}
                     className="p-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-all"
                   >
                     <Trash2 className="w-5 h-5" />
@@ -243,12 +268,19 @@ export function CoachManagement() {
               </div>
               <form onSubmit={handleAddCoach} className="space-y-6">
                 <div>
-                  <label htmlFor="fullName" className="block text-white mb-2">Full Name</label>
+                  <label htmlFor="fullName" className="block text-white mb-2">
+                    Full Name
+                  </label>
                   <input
                     type="text"
                     id="fullName"
                     value={newCoach.fullName}
-                    onChange={(e) => setNewCoach(prev => ({ ...prev, fullName: e.target.value }))}
+                    onChange={(e) =>
+                      setNewCoach((prev) => ({
+                        ...prev,
+                        fullName: e.target.value,
+                      }))
+                    }
                     className="w-full px-4 py-3 rounded-xl bg-white/10 text-white border border-white/20 
                       focus:border-white/40 focus:outline-none"
                     required
@@ -256,12 +288,19 @@ export function CoachManagement() {
                 </div>
 
                 <div>
-                  <label htmlFor="email" className="block text-white mb-2">Email Address</label>
+                  <label htmlFor="email" className="block text-white mb-2">
+                    Email Address
+                  </label>
                   <input
                     type="email"
                     id="email"
                     value={newCoach.email}
-                    onChange={(e) => setNewCoach(prev => ({ ...prev, email: e.target.value }))}
+                    onChange={(e) =>
+                      setNewCoach((prev) => ({
+                        ...prev,
+                        email: e.target.value,
+                      }))
+                    }
                     className="w-full px-4 py-3 rounded-xl bg-white/10 text-white border border-white/20 
                       focus:border-white/40 focus:outline-none"
                     required
@@ -269,12 +308,19 @@ export function CoachManagement() {
                 </div>
 
                 <div>
-                  <label htmlFor="password" className="block text-white mb-2">Initial Password</label>
+                  <label htmlFor="password" className="block text-white mb-2">
+                    Initial Password
+                  </label>
                   <input
                     type="password"
                     id="password"
                     value={newCoach.password}
-                    onChange={(e) => setNewCoach(prev => ({ ...prev, password: e.target.value }))}
+                    onChange={(e) =>
+                      setNewCoach((prev) => ({
+                        ...prev,
+                        password: e.target.value,
+                      }))
+                    }
                     className="w-full px-4 py-3 rounded-xl bg-white/10 text-white border border-white/20 
                       focus:border-white/40 focus:outline-none"
                     required
@@ -284,12 +330,16 @@ export function CoachManagement() {
                 </div>
 
                 <div>
-                  <label htmlFor="tier" className="block text-white mb-2">Subscription Tier</label>
+                  <label htmlFor="tier" className="block text-white mb-2">
+                    Subscription Tier
+                  </label>
                   <select
                     id="tier"
                     name="tier"
                     value={newCoach.tier}
-                    onChange={(e) => setNewCoach(prev => ({ ...prev, tier: e.target.value }))}
+                    onChange={(e) =>
+                      setNewCoach((prev) => ({ ...prev, tier: e.target.value }))
+                    }
                     className="w-full px-4 py-3 rounded-xl bg-white/10 text-white border border-white/20 
                       focus:border-white/40 focus:outline-none"
                     disabled={isLoading}
@@ -317,7 +367,7 @@ export function CoachManagement() {
                       flex items-center gap-2"
                   >
                     <Shield className="w-5 h-5" />
-                    {isLoading ? 'Adding...' : 'Add Coach'}
+                    {isLoading ? "Adding..." : "Add Coach"}
                   </button>
                 </div>
               </form>

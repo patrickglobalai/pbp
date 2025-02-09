@@ -1,33 +1,35 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
-import { Users, Key, Brain, AlertCircle, LogOut } from 'lucide-react';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { auth, db } from '../lib/firebase';
-import { isUserPartner } from '../lib/auth';
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { motion } from "framer-motion";
+import { AlertCircle, Brain, Key, LogOut, Users } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { isUserPartner } from "../lib/auth";
+import { auth, db } from "../lib/firebase";
 
 export function PartnerDashboard() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [stats, setStats] = useState({
     totalCoaches: 0,
     activeAssessments: 0,
-    availableCodes: 0
+    availableCodes: 0,
   });
 
   useEffect(() => {
     checkPartnerAccess();
-    loadDashboardStats();
-  }, []);
+    if (auth?.currentUser?.uid) {
+      loadDashboardStats();
+    }
+  }, [auth?.currentUser?.uid]);
 
   const handleLogout = useCallback(async () => {
     try {
       await signOut(auth);
-      navigate('/login');
+      navigate("/login");
     } catch (err) {
-      console.error('Error signing out:', err);
+      console.error("Error signing out:", err);
     }
   }, [navigate]);
 
@@ -35,21 +37,21 @@ export function PartnerDashboard() {
     try {
       const unsubscribe = onAuthStateChanged(auth, async (user) => {
         if (!user) {
-          navigate('/login');
+          navigate("/login");
           return;
         }
 
         const isPartner = await isUserPartner(user.uid);
         if (!isPartner) {
-          navigate('/');
+          navigate("/");
           return;
         }
       });
 
       return () => unsubscribe();
     } catch (err) {
-      console.error('Partner access check failed:', err);
-      navigate('/');
+      console.error("Partner access check failed:", err);
+      navigate("/");
     }
   };
 
@@ -57,36 +59,37 @@ export function PartnerDashboard() {
     try {
       setIsLoading(true);
       const userId = auth.currentUser?.uid;
-      
+
       // Get coaches count
       const coachesQuery = query(
-        collection(db, 'coaches'),
-        where('partnerId', '==', userId)
+        collection(db, "coaches"),
+        where("partnerId", "==", userId)
       );
       const coachesSnapshot = await getDocs(coachesQuery);
       const coachesCount = coachesSnapshot.size;
 
       // Get assessment codes count
       const codesQuery = query(
-        collection(db, 'assessment_codes'),
-        where('partnerId', '==', userId),
-        where('used', '==', false)
+        collection(db, "assessment_codes"),
+        where("partnerId", "==", userId),
+        where("used", "==", false)
       );
       const codesSnapshot = await getDocs(codesQuery);
       const codesCount = codesSnapshot.size;
 
       // Get active assessments count
-      const assessmentsCount = await calculateActiveAssessments(coachesSnapshot.docs.map(doc => doc.id));
+      const assessmentsCount = await calculateActiveAssessments(
+        coachesSnapshot.docs.map((doc) => doc.id)
+      );
 
       setStats({
         totalCoaches: coachesCount,
         activeAssessments: assessmentsCount,
-        availableCodes: codesCount
+        availableCodes: codesCount,
       });
-
     } catch (err) {
-      console.error('Failed to load dashboard stats:', err);
-      setError('Failed to load dashboard statistics');
+      console.error("Failed to load dashboard stats:", err);
+      setError("Failed to load dashboard statistics");
     } finally {
       setIsLoading(false);
     }
@@ -94,10 +97,10 @@ export function PartnerDashboard() {
 
   const calculateActiveAssessments = async (coachIds: string[]) => {
     if (coachIds.length === 0) return 0;
-    
+
     const assessmentsQuery = query(
-      collection(db, 'respondents'),
-      where('coachId', 'in', coachIds)
+      collection(db, "respondents"),
+      where("coachId", "in", coachIds)
     );
     const assessmentsSnapshot = await getDocs(assessmentsQuery);
     return assessmentsSnapshot.size;
@@ -120,8 +123,12 @@ export function PartnerDashboard() {
           <div className="flex items-center gap-4">
             <Brain className="w-12 h-12 text-white" />
             <div>
-              <h1 className="text-3xl font-bold text-white">Partner Dashboard</h1>
-              <p className="text-white/80">Manage your coaches and assessment codes</p>
+              <h1 className="text-3xl font-bold text-white">
+                Partner Dashboard
+              </h1>
+              <p className="text-white/80">
+                Manage your coaches and assessment codes
+              </p>
             </div>
           </div>
           <button
@@ -149,7 +156,9 @@ export function PartnerDashboard() {
             className="glass-effect rounded-2xl p-6"
           >
             <Users className="w-8 h-8 text-blue-400 mb-4" />
-            <div className="text-4xl font-bold text-white mb-2">{stats.totalCoaches}</div>
+            <div className="text-4xl font-bold text-white mb-2">
+              {stats.totalCoaches}
+            </div>
             <div className="text-white/80">Active Coaches</div>
           </motion.div>
 
@@ -160,7 +169,9 @@ export function PartnerDashboard() {
             className="glass-effect rounded-2xl p-6"
           >
             <Key className="w-8 h-8 text-emerald-400 mb-4" />
-            <div className="text-4xl font-bold text-white mb-2">{stats.availableCodes}</div>
+            <div className="text-4xl font-bold text-white mb-2">
+              {stats.availableCodes}
+            </div>
             <div className="text-white/80">Available Codes</div>
           </motion.div>
 
@@ -171,7 +182,9 @@ export function PartnerDashboard() {
             className="glass-effect rounded-2xl p-6"
           >
             <Brain className="w-8 h-8 text-purple-400 mb-4" />
-            <div className="text-4xl font-bold text-white mb-2">{stats.activeAssessments}</div>
+            <div className="text-4xl font-bold text-white mb-2">
+              {stats.activeAssessments}
+            </div>
             <div className="text-white/80">Total Assessments</div>
           </motion.div>
         </div>
@@ -181,28 +194,34 @@ export function PartnerDashboard() {
           <h2 className="text-2xl font-bold text-white mb-6">Quick Actions</h2>
           <div className="grid md:grid-cols-2 gap-4">
             <button
-              onClick={() => navigate('/partner/coaches')}
+              onClick={() => navigate("/partner/coaches")}
               className="p-4 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-all text-left"
             >
               <Users className="w-6 h-6 mb-2" />
               <div className="font-medium">Manage Coaches</div>
-              <div className="text-sm text-white/60">Add, remove, and manage coach accounts</div>
+              <div className="text-sm text-white/60">
+                Add, remove, and manage coach accounts
+              </div>
             </button>
 
             <button
-              onClick={() => navigate('/partner/codes')}
+              onClick={() => navigate("/partner/codes")}
               className="p-4 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-all text-left"
             >
               <Key className="w-6 h-6 mb-2" />
               <div className="font-medium">Assessment Codes</div>
-              <div className="text-sm text-white/60">Generate and manage assessment codes</div>
+              <div className="text-sm text-white/60">
+                Generate and manage assessment codes
+              </div>
             </button>
           </div>
         </div>
 
         {/* Recent Activity */}
         <div className="glass-effect rounded-3xl p-8">
-          <h2 className="text-2xl font-bold text-white mb-6">Recent Activity</h2>
+          <h2 className="text-2xl font-bold text-white mb-6">
+            Recent Activity
+          </h2>
           <div className="text-white/60 text-center py-8">
             Activity feed coming soon...
           </div>

@@ -1,53 +1,67 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { BarChart2, TrendingUp, Users, Clock, ArrowLeft, AlertCircle } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
-import { db } from '../../lib/firebase';
+import {
+  collection,
+  getDocs,
+  query,
+  Timestamp,
+  where,
+} from "firebase/firestore";
+import { motion } from "framer-motion";
+import {
+  AlertCircle,
+  ArrowLeft,
+  BarChart2,
+  Clock,
+  TrendingUp,
+  Users,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { auth, db } from "../../lib/firebase";
 
 export function Analytics() {
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [stats, setStats] = useState({
     totalAssessments: 0,
     completionRate: 0,
     averageTime: 0,
     activeUsers: 0,
     monthlyGrowth: 0,
-    dailyAssessments: []
+    dailyAssessments: [],
   });
 
   useEffect(() => {
-    loadAnalytics();
-  }, []);
+    if (auth?.currentUser?.uid) {
+      loadAnalytics();
+    }
+  }, [auth?.currentUser?.uid]);
 
   const loadAnalytics = async () => {
     try {
       setIsLoading(true);
-      
+
       // Get total assessments
-      const assessmentsRef = collection(db, 'respondents');
+      const assessmentsRef = collection(db, "respondents");
       const totalSnapshot = await getDocs(assessmentsRef);
       const totalCount = totalSnapshot.size;
 
       // Get completed assessments
-      const completedQuery = query(
-        assessmentsRef,
-        where('results', '!=', {})
-      );
+      const completedQuery = query(assessmentsRef, where("results", "!=", {}));
       const completedSnapshot = await getDocs(completedQuery);
       const completedCount = completedSnapshot.size;
 
       // Calculate completion rate
-      const completionRate = totalCount ? (completedCount / totalCount) * 100 : 0;
+      const completionRate = totalCount
+        ? (completedCount / totalCount) * 100
+        : 0;
 
       // Get active users (last 30 days)
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      
+
       const activeQuery = query(
         assessmentsRef,
-        where('created_at', '>=', Timestamp.fromDate(thirtyDaysAgo))
+        where("created_at", ">=", Timestamp.fromDate(thirtyDaysAgo))
       );
       const activeSnapshot = await getDocs(activeQuery);
       const activeCount = activeSnapshot.size;
@@ -58,12 +72,11 @@ export function Analytics() {
         averageTime: 25, // Placeholder - would need actual timing data
         activeUsers: activeCount,
         monthlyGrowth: 15, // Placeholder - would need historical data
-        dailyAssessments: [] // Placeholder - would need daily aggregation
+        dailyAssessments: [], // Placeholder - would need daily aggregation
       });
-
     } catch (err) {
-      console.error('Error loading analytics:', err);
-      setError('Failed to load analytics data');
+      console.error("Error loading analytics:", err);
+      setError("Failed to load analytics data");
     } finally {
       setIsLoading(false);
     }
@@ -82,8 +95,8 @@ export function Analytics() {
   return (
     <div className="min-h-screen ai-gradient-bg py-12 px-4">
       <div className="max-w-7xl mx-auto">
-        <Link 
-          to="/admin" 
+        <Link
+          to="/admin"
           className="inline-flex items-center gap-2 text-white/80 hover:text-white mb-8 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
@@ -166,7 +179,9 @@ export function Analytics() {
             transition={{ delay: 0.4 }}
             className="glass-effect rounded-3xl p-8"
           >
-            <h2 className="text-2xl font-bold text-white mb-6">Growth Trends</h2>
+            <h2 className="text-2xl font-bold text-white mb-6">
+              Growth Trends
+            </h2>
             <div className="text-white/60 text-center py-8">
               Growth visualization coming soon...
             </div>
@@ -179,7 +194,9 @@ export function Analytics() {
             transition={{ delay: 0.5 }}
             className="glass-effect rounded-3xl p-8"
           >
-            <h2 className="text-2xl font-bold text-white mb-6">Usage Patterns</h2>
+            <h2 className="text-2xl font-bold text-white mb-6">
+              Usage Patterns
+            </h2>
             <div className="text-white/60 text-center py-8">
               Usage pattern visualization coming soon...
             </div>

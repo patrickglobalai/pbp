@@ -1,52 +1,54 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
-import { Users, Key, Brain, AlertCircle, LogOut } from 'lucide-react';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { auth, db } from '../lib/firebase';
-import { isUserCoach } from '../lib/auth';
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { motion } from "framer-motion";
+import { AlertCircle, Brain, Key, LogOut, Users } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { isUserCoach } from "../lib/auth";
+import { auth, db } from "../lib/firebase";
 
 export function CoachDashboard() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [stats, setStats] = useState({
     totalRespondents: 0,
     completedAssessments: 0,
-    activeRespondents: 0
+    activeRespondents: 0,
   });
-  const [assessmentCode, setAssessmentCode] = useState<string>('');
+  const [assessmentCode, setAssessmentCode] = useState<string>("");
   const [hasAiAccess, setHasAiAccess] = useState(false);
   const [hasManualAiAccess, setHasManualAiAccess] = useState(false);
 
   useEffect(() => {
     checkCoachAccess();
-    loadDashboardStats();
-    loadAssessmentCode();
-    checkAIAccess();
-  }, []);
+    if (auth?.currentUser?.uid) {
+      loadDashboardStats();
+      loadAssessmentCode();
+      checkAIAccess();
+    }
+  }, [auth?.currentUser?.uid]);
 
   const handleLogout = useCallback(async () => {
     try {
       await signOut(auth);
-      navigate('/login');
+      navigate("/login");
     } catch (err) {
-      console.error('Error signing out:', err);
+      console.error("Error signing out:", err);
     }
   }, [navigate]);
 
   const checkAIAccess = async () => {
     try {
       if (!auth.currentUser) return;
-      
+
       // Get coach document to check both AI access types
       const coachQuery = query(
-        collection(db, 'coaches'),
-        where('userId', '==', auth.currentUser.uid)
+        collection(db, "coaches"),
+        where("userId", "==", auth.currentUser.uid)
       );
       const coachSnapshot = await getDocs(coachQuery);
-      
+
       if (!coachSnapshot.empty) {
         const coachData = coachSnapshot.docs[0].data();
         // Check for full AI access (advanced/partner tiers)
@@ -55,7 +57,7 @@ export function CoachDashboard() {
         setHasManualAiAccess(coachData.manualAiAccess === true);
       }
     } catch (err) {
-      console.error('Error checking AI access:', err);
+      console.error("Error checking AI access:", err);
     }
   };
 
@@ -63,40 +65,40 @@ export function CoachDashboard() {
     try {
       const unsubscribe = onAuthStateChanged(auth, async (user) => {
         if (!user) {
-          navigate('/login');
+          navigate("/login");
           return;
         }
 
         const isCoach = await isUserCoach(user.uid);
         if (!isCoach) {
-          navigate('/');
+          navigate("/");
           return;
         }
       });
 
       return () => unsubscribe();
     } catch (err) {
-      console.error('Coach access check failed:', err);
-      navigate('/');
+      console.error("Coach access check failed:", err);
+      navigate("/");
     }
   };
 
   const loadAssessmentCode = async () => {
     try {
       if (!auth.currentUser) return;
-      
+
       const coachQuery = query(
-        collection(db, 'coaches'),
-        where('userId', '==', auth.currentUser.uid)
+        collection(db, "coaches"),
+        where("userId", "==", auth.currentUser.uid)
       );
       const coachSnapshot = await getDocs(coachQuery);
-      
+
       if (!coachSnapshot.empty) {
         const coachData = coachSnapshot.docs[0].data();
         setAssessmentCode(coachData.assessmentCode);
       }
     } catch (err) {
-      console.error('Error loading assessment code:', err);
+      console.error("Error loading assessment code:", err);
     }
   };
 
@@ -104,19 +106,19 @@ export function CoachDashboard() {
     try {
       setIsLoading(true);
       const userId = auth.currentUser?.uid;
-      
+
       // Get respondents for this coach
       const respondentsQuery = query(
-        collection(db, 'respondents'),
-        where('coachId', '==', userId)
+        collection(db, "respondents"),
+        where("coachId", "==", userId)
       );
       const respondentsSnapshot = await getDocs(respondentsQuery);
       const totalRespondents = respondentsSnapshot.size;
 
       // Get completed assessments
       const completedQuery = query(
-        collection(db, 'results'),
-        where('coachId', '==', userId)
+        collection(db, "results"),
+        where("coachId", "==", userId)
       );
       const completedSnapshot = await getDocs(completedQuery);
       const completedCount = completedSnapshot.size;
@@ -124,23 +126,22 @@ export function CoachDashboard() {
       // Get active respondents (accessed in last 30 days)
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      
+
       const activeQuery = query(
-        collection(db, 'respondents'),
-        where('coachId', '==', userId),
-        where('lastAccessedAt', '>=', thirtyDaysAgo)
+        collection(db, "respondents"),
+        where("coachId", "==", userId),
+        where("lastAccessedAt", ">=", thirtyDaysAgo)
       );
       const activeSnapshot = await getDocs(activeQuery);
 
       setStats({
         totalRespondents,
         completedAssessments: completedCount,
-        activeRespondents: activeSnapshot.size
+        activeRespondents: activeSnapshot.size,
       });
-
     } catch (err) {
-      console.error('Failed to load dashboard stats:', err);
-      setError('Failed to load dashboard statistics');
+      console.error("Failed to load dashboard stats:", err);
+      setError("Failed to load dashboard statistics");
     } finally {
       setIsLoading(false);
     }
@@ -164,7 +165,9 @@ export function CoachDashboard() {
             <Brain className="w-12 h-12 text-white" />
             <div>
               <h1 className="text-3xl font-bold text-white">Coach Dashboard</h1>
-              <p className="text-white/80">Monitor your assessments and respondents</p>
+              <p className="text-white/80">
+                Monitor your assessments and respondents
+              </p>
             </div>
           </div>
           <button
@@ -189,8 +192,12 @@ export function CoachDashboard() {
             <div className="flex items-center gap-4">
               <Key className="w-8 h-8 text-blue-400" />
               <div>
-                <h2 className="text-xl font-bold text-white">Your Assessment Code</h2>
-                <p className="text-white/80">Share this code with your clients</p>
+                <h2 className="text-xl font-bold text-white">
+                  Your Assessment Code
+                </h2>
+                <p className="text-white/80">
+                  Share this code with your clients
+                </p>
               </div>
             </div>
             <button
@@ -201,7 +208,9 @@ export function CoachDashboard() {
             </button>
           </div>
           <div className="mt-4 p-4 bg-white/10 rounded-xl">
-            <p className="text-2xl font-mono text-white text-center">{assessmentCode}</p>
+            <p className="text-2xl font-mono text-white text-center">
+              {assessmentCode}
+            </p>
           </div>
         </div>
 
@@ -212,7 +221,9 @@ export function CoachDashboard() {
             className="glass-effect rounded-2xl p-6"
           >
             <Users className="w-8 h-8 text-blue-400 mb-4" />
-            <div className="text-4xl font-bold text-white mb-2">{stats.totalRespondents}</div>
+            <div className="text-4xl font-bold text-white mb-2">
+              {stats.totalRespondents}
+            </div>
             <div className="text-white/80">Total Respondents</div>
           </motion.div>
 
@@ -223,7 +234,9 @@ export function CoachDashboard() {
             className="glass-effect rounded-2xl p-6"
           >
             <Key className="w-8 h-8 text-emerald-400 mb-4" />
-            <div className="text-4xl font-bold text-white mb-2">{stats.completedAssessments}</div>
+            <div className="text-4xl font-bold text-white mb-2">
+              {stats.completedAssessments}
+            </div>
             <div className="flex items-center gap-2">
               <span className="text-white/80">Completed Assessments</span>
               <span className="text-xs text-yellow-300">(Coming Soon)</span>
@@ -237,7 +250,9 @@ export function CoachDashboard() {
             className="glass-effect rounded-2xl p-6"
           >
             <Brain className="w-8 h-8 text-purple-400 mb-4" />
-            <div className="text-4xl font-bold text-white mb-2">{stats.activeRespondents}</div>
+            <div className="text-4xl font-bold text-white mb-2">
+              {stats.activeRespondents}
+            </div>
             <div className="flex items-center gap-2">
               <span className="text-white/80">Active Respondents (30d)</span>
               <span className="text-xs text-yellow-300">(Coming Soon)</span>
@@ -249,29 +264,35 @@ export function CoachDashboard() {
           <h2 className="text-2xl font-bold text-white mb-6">Quick Actions</h2>
           <div className="grid md:grid-cols-2 gap-4">
             <button
-              onClick={() => navigate('/coach/respondents')}
+              onClick={() => navigate("/coach/respondents")}
               className="p-4 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-all text-left"
             >
               <Users className="w-6 h-6 mb-2" />
               <div className="font-medium">View Respondents</div>
-              <div className="text-sm text-white/60">Access your respondents' profiles and assessment results</div>
+              <div className="text-sm text-white/60">
+                Access your respondents' profiles and assessment results
+              </div>
             </button>
 
             {(hasManualAiAccess || hasAiAccess) && (
               <button
-                onClick={() => navigate('/coach/manual-analysis')}
+                onClick={() => navigate("/coach/manual-analysis")}
                 className="p-4 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-all text-left"
               >
                 <Brain className="w-6 h-6 mb-2" />
                 <div className="font-medium">Manual AI Analysis</div>
-                <div className="text-sm text-white/60">Enter scores manually to get AI insights</div>
+                <div className="text-sm text-white/60">
+                  Enter scores manually to get AI insights
+                </div>
               </button>
             )}
           </div>
         </div>
 
         <div className="glass-effect rounded-3xl p-8">
-          <h2 className="text-2xl font-bold text-white mb-6">Recent Activity</h2>
+          <h2 className="text-2xl font-bold text-white mb-6">
+            Recent Activity
+          </h2>
           <div className="text-white/60 text-center py-8">
             Activity feed coming soon...
           </div>

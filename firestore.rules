@@ -1,0 +1,70 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
+
+    // Results collection
+    match /results/{resultId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
+
+    // Coaches collection
+    match /coaches/{coachId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    // Assessment codes collection
+    match /assessment_codes/{codeId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    // Respondents collection
+    match /respondents/{respondentId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
+
+    // User agreements collection
+    match /user_agreements/{agreementId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
+
+    // Admins collection
+    match /admins/{adminId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // Partners collection
+    match /partners/{partnerId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // Allow access to all other collections
+    match /{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+  }
+}

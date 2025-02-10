@@ -1,10 +1,11 @@
+import { onAuthStateChanged } from "firebase/auth";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { motion } from "framer-motion";
 import { AlertCircle, ArrowLeft, Edit2, Trash2, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { auth, db } from "../../lib/firebase";
-
+import { displayErrorMessage } from "../../utils/functions";
 interface Coach {
   id: string;
   userId: string;
@@ -27,10 +28,14 @@ export function PartnerCoachManagement() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (auth?.currentUser?.uid) {
-      loadCoaches();
-    }
-  }, [auth?.currentUser?.uid]);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user?.uid) {
+        loadCoaches();
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const loadCoaches = async () => {
     try {
@@ -88,7 +93,7 @@ export function PartnerCoachManagement() {
       setCoaches(coachesData);
     } catch (err) {
       console.error("Error loading coaches:", err);
-      setError("Failed to load coaches");
+      setError(displayErrorMessage(err));
     } finally {
       setIsLoading(false);
     }

@@ -1,11 +1,19 @@
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  where,
+} from "firebase/firestore";
 import { motion } from "framer-motion";
 import { AlertCircle, Brain, Key, LogOut, Users } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { isUserPartner } from "../lib/auth";
 import { auth, db } from "../lib/firebase";
+import { displayErrorMessage } from "../utils/functions";
 
 export function PartnerDashboard() {
   const navigate = useNavigate();
@@ -61,7 +69,24 @@ export function PartnerDashboard() {
       setIsLoading(true);
       const userId = auth.currentUser?.uid;
 
+      if (!userId) {
+        setError("User not found");
+        setIsLoading(false);
+        return;
+      }
+
+      // get current user from db
+      const userDoc = await getDoc(doc(db, "users", userId));
+      const userData = userDoc.data();
+
+      if (!userData) {
+        setError("User not found");
+        setIsLoading(false);
+        return;
+      }
+
       // Get coaches count
+
       const coachesQuery = query(
         collection(db, "coaches"),
         where("partnerId", "==", userId)
@@ -90,7 +115,7 @@ export function PartnerDashboard() {
       });
     } catch (err) {
       console.error("Failed to load dashboard stats:", err);
-      setError("Failed to load dashboard statistics");
+      setError(displayErrorMessage(err));
     } finally {
       setIsLoading(false);
     }

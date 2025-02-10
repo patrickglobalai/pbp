@@ -1,5 +1,9 @@
 import { initializeApp } from "firebase/app";
-import { createUserWithEmailAndPassword, getAuth } from "firebase/auth";
+import {
+  createUserWithEmailAndPassword,
+  getAuth,
+  onAuthStateChanged,
+} from "firebase/auth";
 import {
   collection,
   doc,
@@ -84,10 +88,14 @@ export function PartnerManagement() {
   });
 
   useEffect(() => {
-    if (auth?.currentUser?.uid) {
-      loadPartners();
-    }
-  }, [auth?.currentUser?.uid]);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user?.uid) {
+        loadPartners();
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const loadPartners = async () => {
     try {

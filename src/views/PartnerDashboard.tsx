@@ -19,10 +19,7 @@ export function PartnerDashboard() {
 
   useEffect(() => {
     checkPartnerAccess();
-    if (auth?.currentUser?.uid) {
-      loadDashboardStats();
-    }
-  }, [auth?.currentUser?.uid]);
+  }, []);
 
   const handleLogout = useCallback(async () => {
     try {
@@ -45,6 +42,10 @@ export function PartnerDashboard() {
         if (!isPartner) {
           navigate("/");
           return;
+        }
+
+        if (auth?.currentUser?.uid) {
+          loadDashboardStats();
         }
       });
 

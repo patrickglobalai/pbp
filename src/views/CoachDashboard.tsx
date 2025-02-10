@@ -22,12 +22,7 @@ export function CoachDashboard() {
 
   useEffect(() => {
     checkCoachAccess();
-    if (auth?.currentUser?.uid) {
-      loadDashboardStats();
-      loadAssessmentCode();
-      checkAIAccess();
-    }
-  }, [auth?.currentUser?.uid]);
+  }, []);
 
   const handleLogout = useCallback(async () => {
     try {
@@ -73,6 +68,12 @@ export function CoachDashboard() {
         if (!isCoach) {
           navigate("/");
           return;
+        }
+
+        if (auth?.currentUser?.uid) {
+          loadDashboardStats();
+          loadAssessmentCode();
+          checkAIAccess();
         }
       });
 

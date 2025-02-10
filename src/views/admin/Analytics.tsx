@@ -1,3 +1,4 @@
+import { onAuthStateChanged } from "firebase/auth";
 import {
   collection,
   getDocs,
@@ -17,7 +18,6 @@ import {
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { auth, db } from "../../lib/firebase";
-
 export function Analytics() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -31,10 +31,14 @@ export function Analytics() {
   });
 
   useEffect(() => {
-    if (auth?.currentUser?.uid) {
-      loadAnalytics();
-    }
-  }, [auth?.currentUser?.uid]);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user?.uid) {
+        loadAnalytics();
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const loadAnalytics = async () => {
     try {

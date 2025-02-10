@@ -1,3 +1,4 @@
+import { onAuthStateChanged } from "firebase/auth";
 import { addDoc, collection, getDocs, query, where } from "firebase/firestore";
 import { motion } from "framer-motion";
 import { AlertCircle, ArrowLeft, Copy, Key, Plus } from "lucide-react";
@@ -28,11 +29,15 @@ export function AssessmentCodes() {
   const [coaches, setCoaches] = useState<any[]>([]);
 
   useEffect(() => {
-    if (auth?.currentUser?.uid) {
-      loadCodes();
-      loadCoaches();
-    }
-  }, [auth?.currentUser?.uid]);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user?.uid) {
+        loadCodes();
+        loadCoaches();
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const loadCodes = async () => {
     try {
@@ -45,10 +50,16 @@ export function AssessmentCodes() {
           const data = doc.data();
 
           // Get coach data
-          const coachDoc = await getDocs(
-            query(collection(db, "users"), where("userId", "==", data.coachId))
-          );
-          const coachData = coachDoc.docs[0]?.data();
+          let coachData, coachDoc;
+          if (data?.coachId) {
+            coachDoc = await getDocs(
+              query(
+                collection(db, "users"),
+                where("userId", "==", data.coachId)
+              )
+            );
+            coachData = coachDoc?.docs[0]?.data();
+          }
 
           return {
             id: doc.id,

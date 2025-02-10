@@ -20,10 +20,7 @@ export function AdminDashboard() {
 
   useEffect(() => {
     checkAdminAccess();
-    if (auth?.currentUser?.uid) {
-      loadDashboardStats();
-    }
-  }, [auth?.currentUser?.uid]);
+  }, []);
 
   const checkAdminAccess = async () => {
     try {
@@ -37,6 +34,10 @@ export function AdminDashboard() {
         if (!isAdmin) {
           navigate("/");
           return;
+        }
+
+        if (auth?.currentUser?.uid) {
+          loadDashboardStats();
         }
       });
 

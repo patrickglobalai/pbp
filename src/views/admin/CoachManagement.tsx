@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { motion } from "framer-motion";
 import {
@@ -63,10 +63,14 @@ export function CoachManagement() {
   });
 
   useEffect(() => {
-    if (auth?.currentUser?.uid) {
-      loadCoaches();
-    }
-  }, [auth?.currentUser?.uid]);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user?.uid) {
+        loadCoaches();
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const loadCoaches = async () => {
     try {

@@ -67,10 +67,8 @@ export function ResultsView() {
   };
 
   useEffect(() => {
-    if (auth?.currentUser?.uid) {
-      checkAccess();
-    }
-  }, [auth?.currentUser?.uid]);
+    checkAccess();
+  }, [auth?.currentUser]);
 
   const handleSave = async () => {
     if (!auth.currentUser) return;

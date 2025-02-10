@@ -1,3 +1,4 @@
+import { onAuthStateChanged } from "firebase/auth";
 import { addDoc, collection, getDocs, query, where } from "firebase/firestore";
 import { motion } from "framer-motion";
 import { AlertCircle, ArrowLeft, Copy, Key, Plus } from "lucide-react";
@@ -22,11 +23,13 @@ export function PartnerAssessmentCodes() {
   const [selectedTier, setSelectedTier] = useState("basic");
 
   useEffect(() => {
-    if (auth?.currentUser?.uid) {
-      loadCodes();
-    }
-  }, [auth?.currentUser?.uid]);
-
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user?.uid) {
+        loadCodes();
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   const loadCodes = async () => {
     try {

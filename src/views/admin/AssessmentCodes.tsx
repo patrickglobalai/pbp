@@ -1,10 +1,10 @@
-import { onAuthStateChanged } from "firebase/auth";
 import { addDoc, collection, getDocs, query, where } from "firebase/firestore";
 import { motion } from "framer-motion";
 import { AlertCircle, ArrowLeft, Copy, Key, Plus } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { auth, db } from "../../lib/firebase";
+import { useAuth } from "../../contexts/AuthContext";
+import { db } from "../../lib/firebase";
 
 interface AssessmentCode {
   id: string;
@@ -27,17 +27,14 @@ export function AssessmentCodes() {
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [selectedCoach, setSelectedCoach] = useState("");
   const [coaches, setCoaches] = useState<any[]>([]);
+  const { user } = useAuth();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user?.uid) {
-        loadCodes();
-        loadCoaches();
-      }
-    });
-
-    return () => unsubscribe();
-  }, []);
+    if (user?.uid) {
+      loadCodes();
+      loadCoaches();
+    }
+  }, [user]);
 
   const loadCodes = async () => {
     try {

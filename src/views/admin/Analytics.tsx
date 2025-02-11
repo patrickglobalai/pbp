@@ -1,4 +1,3 @@
-import { onAuthStateChanged } from "firebase/auth";
 import {
   collection,
   getDocs,
@@ -17,10 +16,13 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { auth, db } from "../../lib/firebase";
+import { useAuth } from "../../contexts/AuthContext";
+import { db } from "../../lib/firebase";
+
 export function Analytics() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const { user } = useAuth();
   const [stats, setStats] = useState({
     totalAssessments: 0,
     completionRate: 0,
@@ -31,14 +33,10 @@ export function Analytics() {
   });
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user?.uid) {
-        loadAnalytics();
-      }
-    });
-
-    return () => unsubscribe();
-  }, []);
+    if (user?.uid) {
+      loadAnalytics();
+    }
+  }, [user]);
 
   const loadAnalytics = async () => {
     try {

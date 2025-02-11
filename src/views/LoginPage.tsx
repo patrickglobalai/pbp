@@ -5,14 +5,18 @@ import { Brain, Lock, AlertCircle, Mail } from 'lucide-react';
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 import { checkUserRole } from '../lib/auth';
+import { UserAgreementsModal } from '../components/UserAgreementsModal';
+import { useAuth } from '../contexts/AuthContext';
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const { checkAgreements, saveAgreements } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [resetSuccess, setResetSuccess] = useState(false);
+  const [showAgreements, setShowAgreements] = useState(false);
   const [credentials, setCredentials] = useState({
     email: '',
     password: ''
@@ -36,6 +40,13 @@ export function LoginPage() {
       if (!role) {
         await auth.signOut();
         throw new Error('User role not found');
+      }
+
+      // Check user agreements
+      const hasAgreements = await checkAgreements();
+      if (!hasAgreements) {
+        setShowAgreements(true);
+        return;
       }
 
       // Redirect based on role
@@ -94,6 +105,39 @@ export function LoginPage() {
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleAgreementsSubmit = async (agreements: {
+    privacyAccepted: boolean;
+    termsAccepted: boolean;
+    disclaimerAccepted: boolean;
+    gdprAccepted: boolean;
+  }) => {
+    try {
+      await saveAgreements(agreements);
+      
+      // Get user role again and redirect
+      if (auth.currentUser) {
+        const role = await checkUserRole(auth.currentUser.uid);
+        switch (role) {
+          case 'admin':
+            navigate('/admin');
+            break;
+          case 'partner':
+            navigate('/partner');
+            break;
+          case 'coach':
+            navigate('/coach');
+            break;
+          case 'respondent':
+            navigate('/dashboard');
+            break;
+        }
+      }
+    } catch (err) {
+      console.error('Error saving agreements:', err);
+      throw err;
     }
   };
 
@@ -228,6 +272,12 @@ export function LoginPage() {
           )}
         </motion.div>
       </div>
+
+      <UserAgreementsModal
+        isOpen={showAgreements}
+        onClose={() => setShowAgreements(false)}
+        onSubmit={handleAgreementsSubmit}
+      />
     </div>
   );
 }

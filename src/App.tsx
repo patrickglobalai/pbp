@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
 import { HomePage } from './views/HomePage';
 import { ExampleResults } from './views/ExampleResults';
 import { QuestionnaireContainer } from './containers/QuestionnaireContainer';
@@ -31,45 +32,47 @@ import { CoachRegistrationPage } from './views/CoachRegistrationPage';
 
 export default function App() {
   return (
-    <AssessmentProvider>
-      <ResultsProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/example" element={<ExampleResults />} />
-            <Route path="/register" element={<RegistrationPage />} />
-            <Route path="/instructions" element={<InstructionsView />} />
-            <Route path="/assessment" element={<QuestionnaireContainer />} />
-            <Route path="/results" element={<ResultsView />} />
-            <Route path="/analysis" element={<AIAnalysisView />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/dashboard" element={<RespondentDashboard />} />
-            <Route path="/privacy" element={<PrivacyPage />} />
-            <Route path="/terms" element={<TermsPage />} />
-            <Route path="/disclaimer" element={<DisclaimerPage />} />
-            <Route path="/coach-registration" element={<CoachRegistrationPage />} />
-            
-            {/* Admin Routes */}
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/admin/partners" element={<PartnerManagement />} />
-            <Route path="/admin/coaches" element={<CoachManagement />} />
-            <Route path="/admin/codes" element={<AssessmentCodes />} />
-            <Route path="/admin/analytics" element={<Analytics />} />
-            
-            {/* Coach Routes */}
-            <Route path="/coach" element={<CoachDashboard />} />
-            <Route path="/coach/respondents" element={<RespondentsList />} />
-            <Route path="/coach/results/:userId" element={<RespondentResults />} />
-            <Route path="/coach/manual-analysis" element={<ManualAIAnalysis />} />
+    <AuthProvider>
+      <AssessmentProvider>
+        <ResultsProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/example" element={<ExampleResults />} />
+              <Route path="/register" element={<RegistrationPage />} />
+              <Route path="/instructions" element={<InstructionsView />} />
+              <Route path="/assessment" element={<QuestionnaireContainer />} />
+              <Route path="/results" element={<ResultsView />} />
+              <Route path="/analysis" element={<AIAnalysisView />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/dashboard" element={<RespondentDashboard />} />
+              <Route path="/privacy" element={<PrivacyPage />} />
+              <Route path="/terms" element={<TermsPage />} />
+              <Route path="/disclaimer" element={<DisclaimerPage />} />
+              <Route path="/coach-registration" element={<CoachRegistrationPage />} />
+              
+              {/* Admin Routes */}
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin/partners" element={<PartnerManagement />} />
+              <Route path="/admin/coaches" element={<CoachManagement />} />
+              <Route path="/admin/codes" element={<AssessmentCodes />} />
+              <Route path="/admin/analytics" element={<Analytics />} />
+              
+              {/* Coach Routes */}
+              <Route path="/coach" element={<CoachDashboard />} />
+              <Route path="/coach/respondents" element={<RespondentsList />} />
+              <Route path="/coach/results/:userId" element={<RespondentResults />} />
+              <Route path="/coach/manual-analysis" element={<ManualAIAnalysis />} />
 
-            {/* Partner Routes */}
-            <Route path="/partner" element={<PartnerDashboard />} />
-            <Route path="/partner/coaches" element={<PartnerCoachManagement />} />
-            <Route path="/partner/codes" element={<PartnerAssessmentCodes />} />
-            <Route path="/partner/analytics" element={<PartnerAnalytics />} />
-          </Routes>
-        </BrowserRouter>
-      </ResultsProvider>
-    </AssessmentProvider>
+              {/* Partner Routes */}
+              <Route path="/partner" element={<PartnerDashboard />} />
+              <Route path="/partner/coaches" element={<PartnerCoachManagement />} />
+              <Route path="/partner/codes" element={<PartnerAssessmentCodes />} />
+              <Route path="/partner/analytics" element={<PartnerAnalytics />} />
+            </Routes>
+          </BrowserRouter>
+        </ResultsProvider>
+      </AssessmentProvider>
+    </AuthProvider>
   );
 }

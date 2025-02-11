@@ -178,3 +178,49 @@ export async function createCoachAccount(auth: any, coachData: {
     throw error;
   }
 }
+
+export async function checkUserAgreements(userId: string): Promise<boolean> {
+  try {
+    const agreementsDoc = await getDoc(doc(db, 'user_agreements', userId));
+    
+    if (!agreementsDoc.exists()) {
+      return false;
+    }
+
+    const data = agreementsDoc.data();
+    return Boolean(
+      data.privacyAccepted &&
+      data.termsAccepted &&
+      data.disclaimerAccepted &&
+      data.gdprAccepted
+    );
+  } catch (error) {
+    console.error('Error checking user agreements:', error);
+    return false;
+  }
+}
+
+export async function saveUserAgreements(
+  userId: string,
+  agreements: {
+    privacyAccepted: boolean;
+    termsAccepted: boolean;
+    disclaimerAccepted: boolean;
+    gdprAccepted: boolean;
+  }
+): Promise<void> {
+  try {
+    const now = new Date();
+    await setDoc(doc(db, 'user_agreements', userId), {
+      ...agreements,
+      privacyAcceptedAt: now,
+      termsAcceptedAt: now,
+      disclaimerAcceptedAt: now,
+      gdprAcceptedAt: now,
+      updatedAt: now
+    });
+  } catch (error) {
+    console.error('Error saving user agreements:', error);
+    throw error;
+  }
+}

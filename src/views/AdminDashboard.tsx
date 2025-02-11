@@ -1,16 +1,17 @@
-import { onAuthStateChanged } from "firebase/auth";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { motion } from "framer-motion";
 import { AlertCircle, Brain, Key, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { auth, db } from "../lib/firebase";
+import { useAuth } from "../contexts/AuthContext";
+import { db } from "../lib/firebase";
 import { isUserAdmin } from "../lib/firebase-admin";
 
 export function AdminDashboard() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const { isLoading: isAuthLoading, user } = useAuth();
   const [stats, setStats] = useState({
     totalCoaches: 0,
     totalPartners: 0,
@@ -19,29 +20,27 @@ export function AdminDashboard() {
   });
 
   useEffect(() => {
-    checkAdminAccess();
-  }, []);
+    if (!isAuthLoading && !user) {
+      navigate("/login");
+    }
+    if (!isAuthLoading && user) {
+      checkAdminAccess();
+    }
+  }, [isAuthLoading, user, navigate]);
 
   const checkAdminAccess = async () => {
     try {
-      const unsubscribe = onAuthStateChanged(auth, async (user) => {
-        if (!user) {
-          navigate("/login");
-          return;
-        }
+      if (!user) return;
 
-        const isAdmin = await isUserAdmin(user.uid);
-        if (!isAdmin) {
-          navigate("/");
-          return;
-        }
+      const isAdmin = await isUserAdmin(user.uid);
+      if (!isAdmin) {
+        navigate("/");
+        return;
+      }
 
-        if (auth?.currentUser?.uid) {
-          loadDashboardStats();
-        }
-      });
-
-      return () => unsubscribe();
+      if (user?.uid) {
+        loadDashboardStats();
+      }
     } catch (err) {
       console.error("Admin access check failed:", err);
       navigate("/");

@@ -1,9 +1,5 @@
 import { initializeApp } from "firebase/app";
-import {
-  createUserWithEmailAndPassword,
-  getAuth,
-  onAuthStateChanged,
-} from "firebase/auth";
+import { createUserWithEmailAndPassword, getAuth } from "firebase/auth";
 import { addDoc, collection, getDocs, query, where } from "firebase/firestore";
 import { motion } from "framer-motion";
 import {
@@ -66,13 +62,10 @@ export function PartnerManagement() {
   });
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user?.uid) {
-        loadPartners();
-      }
-    });
-    return () => unsubscribe();
-  }, []);
+    if (auth?.currentUser?.uid) {
+      loadPartners();
+    }
+  }, [auth?.currentUser?.uid]);
 
   const loadPartners = async () => {
     try {

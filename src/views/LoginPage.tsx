@@ -1,30 +1,33 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
-import { Brain, Lock, AlertCircle, Mail } from 'lucide-react';
-import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '../lib/firebase';
-import { checkUserRole } from '../lib/auth';
-import { UserAgreementsModal } from '../components/UserAgreementsModal';
-import { useAuth } from '../contexts/AuthContext';
+import {
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+} from "firebase/auth";
+import { motion } from "framer-motion";
+import { AlertCircle, Brain, Lock, Mail } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { UserAgreementsModal } from "../components/UserAgreementsModal";
+import { useAuth } from "../contexts/AuthContext";
+import { checkUserRole } from "../lib/auth";
+import { auth } from "../lib/firebase";
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { checkAgreements, saveAgreements } = useAuth();
+  const { checkAgreements, saveAgreements, user: currentUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [resetEmail, setResetEmail] = useState('');
+  const [resetEmail, setResetEmail] = useState("");
   const [resetSuccess, setResetSuccess] = useState(false);
   const [showAgreements, setShowAgreements] = useState(false);
   const [credentials, setCredentials] = useState({
-    email: '',
-    password: ''
+    email: "",
+    password: "",
   });
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setIsLoading(true);
 
     try {
@@ -39,45 +42,19 @@ export function LoginPage() {
       const role = await checkUserRole(user.uid);
       if (!role) {
         await auth.signOut();
-        throw new Error('User role not found');
+        throw new Error("User role not found");
       }
-
-      // Check user agreements
-      const hasAgreements = await checkAgreements();
-      if (!hasAgreements) {
-        setShowAgreements(true);
-        return;
-      }
-
-      // Redirect based on role
-      switch (role) {
-        case 'admin':
-          navigate('/admin');
-          break;
-        case 'partner':
-          navigate('/partner');
-          break;
-        case 'coach':
-          navigate('/coach');
-          break;
-        case 'respondent':
-          navigate('/dashboard');
-          break;
-        default:
-          throw new Error('Invalid user role');
-      }
-
     } catch (err: any) {
-      console.error('Login error:', err);
-      
-      if (err.code === 'auth/invalid-credential') {
-        setError('Invalid email or password');
-      } else if (err.code === 'auth/user-not-found') {
-        setError('No account found with this email');
-      } else if (err.code === 'auth/wrong-password') {
-        setError('Incorrect password');
+      console.error("Login error:", err);
+
+      if (err.code === "auth/invalid-credential") {
+        setError("Invalid email or password");
+      } else if (err.code === "auth/user-not-found") {
+        setError("No account found with this email");
+      } else if (err.code === "auth/wrong-password") {
+        setError("Incorrect password");
       } else {
-        setError(err.message || 'Failed to log in');
+        setError(err.message || "Failed to log in");
       }
 
       // Sign out if there was an error
@@ -89,7 +66,7 @@ export function LoginPage() {
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setIsLoading(true);
     setResetSuccess(false);
 
@@ -97,11 +74,11 @@ export function LoginPage() {
       await sendPasswordResetEmail(auth, resetEmail);
       setResetSuccess(true);
     } catch (err: any) {
-      console.error('Password reset error:', err);
-      if (err.code === 'auth/user-not-found') {
-        setError('No account found with this email');
+      console.error("Password reset error:", err);
+      if (err.code === "auth/user-not-found") {
+        setError("No account found with this email");
       } else {
-        setError('Failed to send password reset email');
+        setError("Failed to send password reset email");
       }
     } finally {
       setIsLoading(false);
@@ -116,47 +93,93 @@ export function LoginPage() {
   }) => {
     try {
       await saveAgreements(agreements);
-      
+
       // Get user role again and redirect
       if (auth.currentUser) {
         const role = await checkUserRole(auth.currentUser.uid);
         switch (role) {
-          case 'admin':
-            navigate('/admin');
+          case "admin":
+            navigate("/admin");
             break;
-          case 'partner':
-            navigate('/partner');
+          case "partner":
+            navigate("/partner");
             break;
-          case 'coach':
-            navigate('/coach');
+          case "coach":
+            navigate("/coach");
             break;
-          case 'respondent':
-            navigate('/dashboard');
+          case "respondent":
+            navigate("/dashboard");
             break;
         }
       }
     } catch (err) {
-      console.error('Error saving agreements:', err);
+      console.error("Error saving agreements:", err);
       throw err;
     }
   };
 
+  const handleUserLoggedIn = async () => {
+    if (!currentUser) {
+      return;
+    }
+    try {
+      setIsLoading(true);
+
+      // Check user agreements
+      const hasAgreements = await checkAgreements();
+      if (!hasAgreements) {
+        setShowAgreements(true);
+        return;
+      }
+
+      const role = await checkUserRole(currentUser.uid);
+
+      // Redirect based on role
+      switch (role) {
+        case "admin":
+          navigate("/admin");
+          break;
+        case "partner":
+          navigate("/partner");
+          break;
+        case "coach":
+          navigate("/coach");
+          break;
+        case "respondent":
+          navigate("/dashboard");
+          break;
+        default:
+          throw new Error("Invalid user role");
+      }
+    } catch (err) {
+      console.error("Error handling user logged in:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (currentUser) {
+      handleUserLoggedIn();
+    }
+  }, [currentUser]);
+
   return (
     <div className="min-h-screen ai-gradient-bg py-12 px-4">
       <div className="max-w-md mx-auto">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-8"
         >
           <Brain className="w-16 h-16 text-white mx-auto mb-4" />
           <h1 className="text-3xl font-bold text-white mb-2">
-            {showForgotPassword ? 'Reset Password' : 'Sign In'}
+            {showForgotPassword ? "Reset Password" : "Sign In"}
           </h1>
           <p className="text-white/80">
-            {showForgotPassword 
-              ? 'Enter your email to receive reset instructions'
-              : 'Access your dashboard'}
+            {showForgotPassword
+              ? "Enter your email to receive reset instructions"
+              : "Access your dashboard"}
           </p>
         </motion.div>
 
@@ -183,7 +206,9 @@ export function LoginPage() {
           {showForgotPassword ? (
             <form onSubmit={handleForgotPassword} className="space-y-6">
               <div>
-                <label htmlFor="resetEmail" className="block text-white mb-2">Email Address</label>
+                <label htmlFor="resetEmail" className="block text-white mb-2">
+                  Email Address
+                </label>
                 <input
                   type="email"
                   id="resetEmail"
@@ -213,19 +238,26 @@ export function LoginPage() {
                     flex items-center gap-2"
                 >
                   <Mail className="w-5 h-5" />
-                  {isLoading ? 'Sending...' : 'Send Reset Link'}
+                  {isLoading ? "Sending..." : "Send Reset Link"}
                 </button>
               </div>
             </form>
           ) : (
             <form onSubmit={handleLogin} className="space-y-6">
               <div>
-                <label htmlFor="email" className="block text-white mb-2">Email Address</label>
+                <label htmlFor="email" className="block text-white mb-2">
+                  Email Address
+                </label>
                 <input
                   type="email"
                   id="email"
                   value={credentials.email}
-                  onChange={(e) => setCredentials(prev => ({ ...prev, email: e.target.value }))}
+                  onChange={(e) =>
+                    setCredentials((prev) => ({
+                      ...prev,
+                      email: e.target.value,
+                    }))
+                  }
                   className="w-full px-4 py-3 rounded-xl bg-white/10 text-white border border-white/20 
                     focus:border-white/40 focus:outline-none"
                   required
@@ -235,12 +267,19 @@ export function LoginPage() {
               </div>
 
               <div>
-                <label htmlFor="password" className="block text-white mb-2">Password</label>
+                <label htmlFor="password" className="block text-white mb-2">
+                  Password
+                </label>
                 <input
                   type="password"
                   id="password"
                   value={credentials.password}
-                  onChange={(e) => setCredentials(prev => ({ ...prev, password: e.target.value }))}
+                  onChange={(e) =>
+                    setCredentials((prev) => ({
+                      ...prev,
+                      password: e.target.value,
+                    }))
+                  }
                   className="w-full px-4 py-3 rounded-xl bg-white/10 text-white border border-white/20 
                     focus:border-white/40 focus:outline-none"
                   required
@@ -265,7 +304,7 @@ export function LoginPage() {
                     flex items-center gap-2"
                 >
                   <Lock className="w-5 h-5" />
-                  {isLoading ? 'Signing in...' : 'Sign In'}
+                  {isLoading ? "Signing in..." : "Sign In"}
                 </button>
               </div>
             </form>

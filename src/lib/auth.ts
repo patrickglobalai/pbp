@@ -1,144 +1,155 @@
-import { collection, doc, getDoc, query, where, getDocs, setDoc } from 'firebase/firestore';
-import { db } from './firebase';
-import type { UserRole } from '../types/auth';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  setDoc,
+  where,
+} from "firebase/firestore";
+import type { UserRole } from "../types/auth";
+import { db } from "./firebase";
 
 export async function checkUserRole(userId: string): Promise<UserRole | null> {
   try {
-    console.log('Checking user role for:', userId);
-    const userDoc = await getDoc(doc(db, 'users', userId));
+    console.log("Checking user role for:", userId);
+    const userDoc = await getDoc(doc(db, "users", userId));
     if (!userDoc.exists()) {
-      console.log('User document not found');
+      console.log("User document not found");
       return null;
     }
     const role = userDoc.data().role;
-    console.log('Found user role:', role);
+    console.log("Found user role:", role);
     return role;
   } catch (error) {
-    console.error('Error checking user role:', error);
+    console.error("Error checking user role:", error);
     return null;
   }
 }
 
 export async function isUserCoach(userId: string): Promise<boolean> {
   try {
-    console.log('Checking coach status for:', userId);
-    
+    console.log("Checking coach status for:", userId);
+
     // First check user document for role
-    const userDoc = await getDoc(doc(db, 'users', userId));
+    const userDoc = await getDoc(doc(db, "users", userId));
     if (!userDoc.exists()) {
-      console.log('User document not found');
+      console.log("User document not found");
       return false;
     }
 
     const userData = userDoc.data();
-    console.log('User data:', userData);
-    
-    if (userData.role !== 'coach') {
-      console.log('User role is not coach:', userData.role);
+    console.log("User data:", userData);
+
+    if (userData.role !== "coach") {
+      console.log("User role is not coach:", userData.role);
       return false;
     }
 
     // Then verify coach record exists
     const coachQuery = query(
-      collection(db, 'coaches'),
-      where('userId', '==', userId)
+      collection(db, "coaches"),
+      where("userId", "==", userId)
     );
     const coachSnapshot = await getDocs(coachQuery);
-    
+
     const hasCoachRecord = !coachSnapshot.empty;
-    console.log('Has coach record:', hasCoachRecord);
-    
+    console.log("Has coach record:", hasCoachRecord);
+
     return hasCoachRecord;
   } catch (error) {
-    console.error('Error checking coach status:', error);
+    console.error("Error checking coach status:", error);
     return false;
   }
 }
 
 export async function checkCoachAIAccess(coachId: string): Promise<boolean> {
   try {
-    console.log('Checking AI access for coach:', coachId);
+    console.log("Checking AI access for coach:", coachId);
     const coachQuery = query(
-      collection(db, 'coaches'),
-      where('userId', '==', coachId)
+      collection(db, "coaches"),
+      where("userId", "==", coachId)
     );
     const coachSnapshot = await getDocs(coachQuery);
-    
+
     if (coachSnapshot.empty) {
-      console.log('Coach record not found');
+      console.log("Coach record not found");
       return false;
     }
 
     const coachData = coachSnapshot.docs[0].data();
-    console.log('Coach data:', coachData);
-    
+    console.log("Coach data:", coachData);
+
     // Only allow AI access for advanced and partner tiers
-    return ['advanced', 'partner'].includes(coachData.tier);
+    return ["advanced", "partner"].includes(coachData.tier);
   } catch (error) {
-    console.error('Error checking coach AI access:', error);
+    console.error("Error checking coach AI access:", error);
     return false;
   }
 }
 
 export async function isUserAdmin(userId: string): Promise<boolean> {
   try {
-    const userDoc = await getDoc(doc(db, 'users', userId));
+    const userDoc = await getDoc(doc(db, "users", userId));
     if (!userDoc.exists()) {
       return false;
     }
-    
+
     const userData = userDoc.data();
-    if (userData.role !== 'admin') {
+    if (userData.role !== "admin") {
       return false;
     }
 
     const adminQuery = query(
-      collection(db, 'admins'),
-      where('userId', '==', userId)
+      collection(db, "admins"),
+      where("userId", "==", userId)
     );
     const adminSnapshot = await getDocs(adminQuery);
-    
+
     return !adminSnapshot.empty;
   } catch (error) {
-    console.error('Error checking admin status:', error);
+    console.error("Error checking admin status:", error);
     return false;
   }
 }
 
 export async function isUserPartner(userId: string): Promise<boolean> {
   try {
-    const userDoc = await getDoc(doc(db, 'users', userId));
+    const userDoc = await getDoc(doc(db, "users", userId));
     if (!userDoc.exists()) {
       return false;
     }
-    
+
     const userData = userDoc.data();
-    if (userData.role !== 'partner') {
+    if (userData.role !== "partner") {
       return false;
     }
 
     const partnerQuery = query(
-      collection(db, 'partners'),
-      where('userId', '==', userId)
+      collection(db, "partners"),
+      where("userId", "==", userId)
     );
     const partnerSnapshot = await getDocs(partnerQuery);
-    
+
     return !partnerSnapshot.empty;
   } catch (error) {
-    console.error('Error checking partner status:', error);
+    console.error("Error checking partner status:", error);
     return false;
   }
 }
 
-export async function createCoachAccount(auth: any, coachData: {
-  email: string;
-  password: string;
-  fullName: string;
-  tier: string;
-  partnerId: string;
-  assessmentCode: string;
-}) {
+export async function createCoachAccount(
+  auth: any,
+  coachData: {
+    email: string;
+    password: string;
+    fullName: string;
+    tier: string;
+    partnerId: string;
+    assessmentCode: string;
+  }
+) {
   try {
     // Create Firebase auth user
     const { user } = await createUserWithEmailAndPassword(
@@ -147,42 +158,54 @@ export async function createCoachAccount(auth: any, coachData: {
       coachData.password
     );
 
+    // create user agreement document
+    await setDoc(doc(db, "user_agreements", user.uid), {
+      userId: user.uid,
+      privacyAccepted: true,
+      termsAccepted: true,
+      disclaimerAccepted: true,
+      gdprAccepted: true,
+    });
+
+    // Wait for user document to be created before continuing
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
     // Create user document
-    await setDoc(doc(db, 'users', user.uid), {
+    await setDoc(doc(db, "users", user.uid), {
       userId: user.uid,
       email: coachData.email,
       fullName: coachData.fullName,
-      role: 'coach',
+      role: "coach",
       subscription_tier: coachData.tier,
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     });
 
     // Create coach record with updated AI access logic
-    await setDoc(doc(db, 'coaches', user.uid), {
+    await setDoc(doc(db, "coaches", user.uid), {
       userId: user.uid,
       partnerId: coachData.partnerId,
       tier: coachData.tier,
       assessmentCode: coachData.assessmentCode,
       // Only advanced and partner tiers get AI access
-      aiAnalysisAccess: ['advanced', 'partner'].includes(coachData.tier),
+      aiAnalysisAccess: ["advanced", "partner"].includes(coachData.tier),
       // Basic plus gets manual AI access
-      manualAiAccess: coachData.tier === 'basic_plus',
+      manualAiAccess: coachData.tier === "basic_plus",
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     });
 
     return user.uid;
   } catch (error) {
-    console.error('Error creating coach account:', error);
+    console.error("Error creating coach account:", error);
     throw error;
   }
 }
 
 export async function checkUserAgreements(userId: string): Promise<boolean> {
   try {
-    const agreementsDoc = await getDoc(doc(db, 'user_agreements', userId));
-    
+    const agreementsDoc = await getDoc(doc(db, "user_agreements", userId));
+
     if (!agreementsDoc.exists()) {
       return false;
     }
@@ -190,12 +213,12 @@ export async function checkUserAgreements(userId: string): Promise<boolean> {
     const data = agreementsDoc.data();
     return Boolean(
       data.privacyAccepted &&
-      data.termsAccepted &&
-      data.disclaimerAccepted &&
-      data.gdprAccepted
+        data.termsAccepted &&
+        data.disclaimerAccepted &&
+        data.gdprAccepted
     );
   } catch (error) {
-    console.error('Error checking user agreements:', error);
+    console.error("Error checking user agreements:", error);
     return false;
   }
 }
@@ -211,16 +234,16 @@ export async function saveUserAgreements(
 ): Promise<void> {
   try {
     const now = new Date();
-    await setDoc(doc(db, 'user_agreements', userId), {
+    await setDoc(doc(db, "user_agreements", userId), {
       ...agreements,
       privacyAcceptedAt: now,
       termsAcceptedAt: now,
       disclaimerAcceptedAt: now,
       gdprAcceptedAt: now,
-      updatedAt: now
+      updatedAt: now,
     });
   } catch (error) {
-    console.error('Error saving user agreements:', error);
+    console.error("Error saving user agreements:", error);
     throw error;
   }
 }

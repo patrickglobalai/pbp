@@ -1,4 +1,5 @@
 import {
+  onAuthStateChanged,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
 } from "firebase/auth";
@@ -13,7 +14,7 @@ import { auth } from "../lib/firebase";
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { checkAgreements, saveAgreements, user: currentUser } = useAuth();
+  const { checkAgreements, saveAgreements } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -118,23 +119,17 @@ export function LoginPage() {
     }
   };
 
-  const handleUserLoggedIn = async () => {
-    if (!currentUser) {
-      return;
-    }
+  const handleUserLoggedIn = async (uid: string) => {
     try {
       setIsLoading(true);
 
       // Check user agreements
-      const hasAgreements = await checkAgreements();
+      const hasAgreements = await checkAgreements(uid);
       if (!hasAgreements) {
         setShowAgreements(true);
         return;
       }
-
-      const role = await checkUserRole(currentUser.uid);
-
-      // Redirect based on role
+      const role = await checkUserRole(uid);
       switch (role) {
         case "admin":
           navigate("/admin");
@@ -148,8 +143,6 @@ export function LoginPage() {
         case "respondent":
           navigate("/dashboard");
           break;
-        default:
-          throw new Error("Invalid user role");
       }
     } catch (err) {
       console.error("Error handling user logged in:", err);
@@ -159,10 +152,15 @@ export function LoginPage() {
   };
 
   useEffect(() => {
-    if (currentUser) {
-      handleUserLoggedIn();
-    }
-  }, [currentUser]);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      console.log("user", user);
+      if (user?.uid) {
+        handleUserLoggedIn(user?.uid);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   return (
     <div className="min-h-screen ai-gradient-bg py-12 px-4">

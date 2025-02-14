@@ -15,6 +15,7 @@ export async function checkUserRole(userId: string): Promise<UserRole | null> {
   try {
     console.log("Checking user role for:", userId);
     const userDoc = await getDoc(doc(db, "users", userId));
+    console.log("userDoc", userDoc);
     if (!userDoc.exists()) {
       console.log("User document not found");
       return null;
@@ -23,6 +24,7 @@ export async function checkUserRole(userId: string): Promise<UserRole | null> {
     console.log("Found user role:", role);
     return role;
   } catch (error) {
+    console.log("something went wrong");
     console.error("Error checking user role:", error);
     return null;
   }

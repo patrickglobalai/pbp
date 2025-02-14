@@ -9,7 +9,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { UserAgreementsModal } from "../components/UserAgreementsModal";
 import { useAuth } from "../contexts/AuthContext";
-import { checkUserRole } from "../lib/auth";
+import { checkUserAgreements, checkUserRole } from "../lib/auth";
 import { auth } from "../lib/firebase";
 
 export function LoginPage() {
@@ -21,6 +21,7 @@ export function LoginPage() {
   const [resetEmail, setResetEmail] = useState("");
   const [resetSuccess, setResetSuccess] = useState(false);
   const [showAgreements, setShowAgreements] = useState(false);
+  const [hasUserInput, setHasUserInput] = useState(false);
   const [credentials, setCredentials] = useState({
     email: "",
     password: "",
@@ -29,6 +30,7 @@ export function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setHasUserInput(true);
     setIsLoading(true);
 
     try {
@@ -38,6 +40,8 @@ export function LoginPage() {
         credentials.email,
         credentials.password
       );
+
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       // Check user role
       const role = await checkUserRole(user.uid);
@@ -124,11 +128,13 @@ export function LoginPage() {
       setIsLoading(true);
 
       // Check user agreements
-      const hasAgreements = await checkAgreements(uid);
+      const hasAgreements = await checkUserAgreements(uid);
       if (!hasAgreements) {
         setShowAgreements(true);
         return;
       }
+      // 1 SECOND DELAY
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       const role = await checkUserRole(uid);
       switch (role) {
         case "admin":
@@ -152,15 +158,17 @@ export function LoginPage() {
   };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      console.log("user", user);
-      if (user?.uid) {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user?.uid && hasUserInput) {
+        if (credentials.email === "" && credentials.password === "") {
+          await auth.signOut();
+        }
         handleUserLoggedIn(user?.uid);
       }
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [hasUserInput]);
 
   return (
     <div className="min-h-screen ai-gradient-bg py-12 px-4">

@@ -1,14 +1,23 @@
 import OpenAI from 'openai';
 
 const ASSISTANT_ID = import.meta.env.VITE_OPENAI_ASSISTANT_ID;
+const API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
+
+if (!API_KEY) {
+  console.error('OpenAI API key is missing. Please set VITE_OPENAI_API_KEY environment variable.');
+}
 
 const openai = new OpenAI({
-  apiKey: import.meta.env.VITE_OPENAI_API_KEY,
+  apiKey: API_KEY,
   dangerouslyAllowBrowser: true
 });
 
 export async function getAIAnalysis(prompt: string) {
   try {
+    if (!API_KEY) {
+      return 'AI analysis is currently unavailable. Please contact support.';
+    }
+
     console.log('Starting analysis with prompt:', prompt);
 
     // Create a thread

@@ -6,15 +6,16 @@ import {
   getDocs,
   query,
   setDoc,
+  updateDoc,
   where,
 } from "firebase/firestore";
 import type { UserRole } from "../types/auth";
+import { DB_URL } from "../utils/functions";
 import { db } from "./firebase";
-
 export async function checkUserRole(userId: string): Promise<UserRole | null> {
   try {
     console.log("Checking user role for:", userId);
-    const userDoc = await getDoc(doc(db, "users", userId));
+    const userDoc = await getDoc(doc(db, DB_URL.users, userId));
     console.log("userDoc", userDoc);
     if (!userDoc.exists()) {
       console.log("User document not found");
@@ -35,7 +36,7 @@ export async function isUserCoach(userId: string): Promise<boolean> {
     console.log("Checking coach status for:", userId);
 
     // First check user document for role
-    const userDoc = await getDoc(doc(db, "users", userId));
+    const userDoc = await getDoc(doc(db, DB_URL.users, userId));
     if (!userDoc.exists()) {
       console.log("User document not found");
       return false;
@@ -51,7 +52,7 @@ export async function isUserCoach(userId: string): Promise<boolean> {
 
     // Then verify coach record exists
     const coachQuery = query(
-      collection(db, "coaches"),
+      collection(db, DB_URL.coaches),
       where("userId", "==", userId)
     );
     const coachSnapshot = await getDocs(coachQuery);
@@ -70,7 +71,7 @@ export async function checkCoachAIAccess(coachId: string): Promise<boolean> {
   try {
     console.log("Checking AI access for coach:", coachId);
     const coachQuery = query(
-      collection(db, "coaches"),
+      collection(db, DB_URL.coaches),
       where("userId", "==", coachId)
     );
     const coachSnapshot = await getDocs(coachQuery);
@@ -91,9 +92,37 @@ export async function checkCoachAIAccess(coachId: string): Promise<boolean> {
   }
 }
 
+export async function updateCoachAIAccess(
+  coachId: string,
+  enabled: boolean
+): Promise<boolean> {
+  try {
+    const coachQuery = query(
+      collection(db, DB_URL.coaches),
+      where("userId", "==", coachId)
+    );
+    const coachSnapshot = await getDocs(coachQuery);
+
+    if (coachSnapshot.empty) {
+      throw new Error("Coach record not found");
+    }
+
+    const coachDoc = coachSnapshot.docs[0];
+    await updateDoc(doc(db, DB_URL.coaches, coachDoc.id), {
+      aiAnalysisAccess: enabled,
+      updatedAt: new Date(),
+    });
+
+    return true;
+  } catch (error) {
+    console.error("Error updating coach AI access:", error);
+    return false;
+  }
+}
+
 export async function isUserAdmin(userId: string): Promise<boolean> {
   try {
-    const userDoc = await getDoc(doc(db, "users", userId));
+    const userDoc = await getDoc(doc(db, DB_URL.users, userId));
     if (!userDoc.exists()) {
       return false;
     }
@@ -104,7 +133,7 @@ export async function isUserAdmin(userId: string): Promise<boolean> {
     }
 
     const adminQuery = query(
-      collection(db, "admins"),
+      collection(db, DB_URL.admins),
       where("userId", "==", userId)
     );
     const adminSnapshot = await getDocs(adminQuery);
@@ -118,7 +147,7 @@ export async function isUserAdmin(userId: string): Promise<boolean> {
 
 export async function isUserPartner(userId: string): Promise<boolean> {
   try {
-    const userDoc = await getDoc(doc(db, "users", userId));
+    const userDoc = await getDoc(doc(db, DB_URL.users, userId));
     if (!userDoc.exists()) {
       return false;
     }
@@ -129,7 +158,7 @@ export async function isUserPartner(userId: string): Promise<boolean> {
     }
 
     const partnerQuery = query(
-      collection(db, "partners"),
+      collection(db, DB_URL.partners),
       where("userId", "==", userId)
     );
     const partnerSnapshot = await getDocs(partnerQuery);
@@ -161,7 +190,7 @@ export async function createCoachAccount(
     );
 
     // create user agreement document
-    await setDoc(doc(db, "user_agreements", user.uid), {
+    await setDoc(doc(db, DB_URL.user_agreements, user.uid), {
       userId: user.uid,
       privacyAccepted: true,
       termsAccepted: true,
@@ -173,7 +202,7 @@ export async function createCoachAccount(
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
     // Create user document
-    await setDoc(doc(db, "users", user.uid), {
+    await setDoc(doc(db, DB_URL.users, user.uid), {
       userId: user.uid,
       email: coachData.email,
       fullName: coachData.fullName,
@@ -184,7 +213,7 @@ export async function createCoachAccount(
     });
 
     // Create coach record with updated AI access logic
-    await setDoc(doc(db, "coaches", user.uid), {
+    await setDoc(doc(db, DB_URL.coaches, user.uid), {
       userId: user.uid,
       partnerId: coachData.partnerId,
       tier: coachData.tier,
@@ -206,7 +235,7 @@ export async function createCoachAccount(
 
 export async function checkUserAgreements(userId: string): Promise<boolean> {
   try {
-    const agreementsDoc = await getDoc(doc(db, "user_agreements", userId));
+    const agreementsDoc = await getDoc(doc(db, DB_URL.user_agreements, userId));
 
     if (!agreementsDoc.exists()) {
       return false;
@@ -236,7 +265,7 @@ export async function saveUserAgreements(
 ): Promise<void> {
   try {
     const now = new Date();
-    await setDoc(doc(db, "user_agreements", userId), {
+    await setDoc(doc(db, DB_URL.user_agreements, userId), {
       ...agreements,
       privacyAcceptedAt: now,
       termsAcceptedAt: now,

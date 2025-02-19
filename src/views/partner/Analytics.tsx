@@ -17,6 +17,7 @@ import {
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { auth, db } from "../../lib/firebase";
+import { DB_URL } from "../../utils/functions";
 
 export function PartnerAnalytics() {
   const [isLoading, setIsLoading] = useState(true);
@@ -42,7 +43,7 @@ export function PartnerAnalytics() {
 
       // Get coaches count
       const coachesQuery = query(
-        collection(db, "coaches"),
+        collection(db, DB_URL.coaches),
         where("partnerId", "==", partnerId)
       );
       const coachesSnapshot = await getDocs(coachesQuery);
@@ -50,7 +51,7 @@ export function PartnerAnalytics() {
 
       // Get total respondents
       const respondentsQuery = query(
-        collection(db, "respondents"),
+        collection(db, DB_URL.respondents),
         where("coachId", "in", coachIds)
       );
       const respondentsSnapshot = await getDocs(respondentsQuery);
@@ -58,7 +59,7 @@ export function PartnerAnalytics() {
 
       // Get completed assessments
       const completedQuery = query(
-        collection(db, "results"),
+        collection(db, DB_URL.results),
         where("coachId", "in", coachIds)
       );
       const completedSnapshot = await getDocs(completedQuery);
@@ -74,7 +75,7 @@ export function PartnerAnalytics() {
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
       const activeQuery = query(
-        collection(db, "respondents"),
+        collection(db, DB_URL.respondents),
         where("coachId", "in", coachIds),
         where("createdAt", ">=", Timestamp.fromDate(thirtyDaysAgo))
       );

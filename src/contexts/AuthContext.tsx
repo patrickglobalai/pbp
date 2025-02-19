@@ -1,11 +1,12 @@
 import { User, onAuthStateChanged } from "firebase/auth";
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { checkUserAgreements, saveUserAgreements } from "../lib/auth";
+import { checkUserAgreements, saveUserAgreements, checkCoachAIAccess } from "../lib/auth";
 import { auth } from "../lib/firebase";
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
+  hasAIAccess: boolean;
   checkAgreements: (currentUserId: string) => Promise<boolean>;
   saveAgreements: (agreements: {
     privacyAccepted: boolean;
@@ -20,10 +21,17 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasAIAccess, setHasAIAccess] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
+      if (user) {
+        const aiAccess = await checkCoachAIAccess(user.uid);
+        setHasAIAccess(aiAccess);
+      } else {
+        setHasAIAccess(false);
+      }
       setIsLoading(false);
     });
 
@@ -49,6 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         user,
         isLoading,
+        hasAIAccess,
         checkAgreements,
         saveAgreements: handleSaveAgreements,
       }}

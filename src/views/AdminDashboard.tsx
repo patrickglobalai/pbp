@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { db } from "../lib/firebase";
 import { isUserAdmin } from "../lib/firebase-admin";
-
+import { DB_URL } from "../utils/functions";
 export function AdminDashboard() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
@@ -52,15 +52,17 @@ export function AdminDashboard() {
       setIsLoading(true);
 
       // Get coaches count
-      const coachesSnapshot = await getDocs(collection(db, "coaches"));
+      const coachesSnapshot = await getDocs(collection(db, DB_URL.coaches));
       const coachesCount = coachesSnapshot.size;
 
       // Get partners count
-      const partnersSnapshot = await getDocs(collection(db, "partners"));
+      const partnersSnapshot = await getDocs(collection(db, DB_URL.partners));
       const partnersCount = partnersSnapshot.size;
 
       // Get respondents count
-      const respondentsSnapshot = await getDocs(collection(db, "respondents"));
+      const respondentsSnapshot = await getDocs(
+        collection(db, DB_URL.respondents)
+      );
       const respondentsCount = respondentsSnapshot.size;
 
       // Get active assessments (completed in last 30 days)
@@ -68,7 +70,7 @@ export function AdminDashboard() {
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
       const activeQuery = query(
-        collection(db, "respondents"),
+        collection(db, DB_URL.respondents),
         where("createdAt", ">=", thirtyDaysAgo)
       );
       const activeSnapshot = await getDocs(activeQuery);

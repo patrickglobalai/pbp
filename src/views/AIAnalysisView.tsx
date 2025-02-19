@@ -38,6 +38,7 @@ export function AIAnalysisView() {
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasAccess, setHasAccess] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -53,11 +54,14 @@ export function AIAnalysisView() {
         // If accessing as coach, verify permissions
         if (targetUserId !== auth.currentUser.uid) {
           const hasAccess = await checkCoachAIAccess(auth.currentUser.uid);
+          setHasAccess(hasAccess);
           if (!hasAccess) {
             setError('You do not have access to AI analysis');
             setIsInitializing(false);
             return;
           }
+        } else {
+          setHasAccess(true);
         }
 
         if (!scores || !harmonicScores) {
@@ -85,7 +89,7 @@ export function AIAnalysisView() {
   }, [messages]);
 
   const sendMessage = async (content: string) => {
-    if (isLoading) return;
+    if (isLoading || !hasAccess) return;
 
     try {
       setIsLoading(true);
@@ -125,13 +129,13 @@ export function AIAnalysisView() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (inputMessage.trim() && !isLoading) {
+    if (inputMessage.trim() && !isLoading && hasAccess) {
       sendMessage(inputMessage);
     }
   };
 
   const handleButtonClick = (query: string) => {
-    if (!isLoading) {
+    if (!isLoading && hasAccess) {
       sendMessage(query);
     }
   };
@@ -146,12 +150,12 @@ export function AIAnalysisView() {
     );
   }
 
-  if (error) {
+  if (error || !hasAccess) {
     return (
       <div className="min-h-screen ai-gradient-bg py-12 px-4">
         <div className="max-w-7xl mx-auto text-center">
           <div className="text-center">
-            <h1 className="text-3xl font-bold text-white mb-1">{error}</h1>
+            <h1 className="text-3xl font-bold text-white mb-1">{error || 'Access Denied'}</h1>
             <p className="text-white/80 mb-4">Please contact your coach for assistance</p>
             <Link
               to="/results"
@@ -280,11 +284,11 @@ export function AIAnalysisView() {
               placeholder="Ask about your results..."
               className="flex-1 px-6 py-3 rounded-xl bg-white/10 text-white border border-white/20 
                 focus:border-white/40 focus:outline-none"
-              disabled={isLoading}
+              disabled={isLoading || !hasAccess}
             />
             <button
               type="submit"
-              disabled={isLoading || !inputMessage.trim()}
+              disabled={isLoading || !inputMessage.trim() || !hasAccess}
               className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 
                 text-white font-medium hover:scale-105 transition-all disabled:opacity-50"
             >
@@ -301,7 +305,7 @@ export function AIAnalysisView() {
               <button
                 key={button.id}
                 onClick={() => handleButtonClick(button.query)}
-                disabled={isLoading}
+                disabled={isLoading || !hasAccess}
                 className="px-4 py-3 rounded-xl bg-white/10 text-white hover:bg-white/20 
                   transition-all disabled:opacity-50 text-sm"
               >

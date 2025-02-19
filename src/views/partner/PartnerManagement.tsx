@@ -14,7 +14,7 @@ import {
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { auth, db } from "../../lib/firebase";
-
+import { DB_URL } from "../../utils/functions";
 // Create a separate Firebase app instance for partner creation
 const partnerAuthApp = initializeApp(
   {
@@ -70,7 +70,7 @@ export function PartnerManagement() {
   const loadPartners = async () => {
     try {
       setIsLoading(true);
-      const partnersQuery = query(collection(db, "partners"));
+      const partnersQuery = query(collection(db, DB_URL.partners));
       const partnersSnapshot = await getDocs(partnersQuery);
 
       const partnersData = await Promise.all(
@@ -79,13 +79,16 @@ export function PartnerManagement() {
 
           // Get user data
           const userDoc = await getDocs(
-            query(collection(db, "users"), where("userId", "==", data.userId))
+            query(
+              collection(db, DB_URL.users),
+              where("userId", "==", data.userId)
+            )
           );
           const userData = userDoc.docs[0]?.data();
 
           // Get coaches count
           const coachesQuery = query(
-            collection(db, "coaches"),
+            collection(db, DB_URL.coaches),
             where("partnerId", "==", data.userId)
           );
           const coachesSnapshot = await getDocs(coachesQuery);
@@ -95,7 +98,7 @@ export function PartnerManagement() {
           let respondentsCount = 0;
           if (coachIds.length > 0) {
             const respondentsQuery = query(
-              collection(db, "respondents"),
+              collection(db, DB_URL.respondents),
               where("coachId", "in", coachIds)
             );
             const respondentsSnapshot = await getDocs(respondentsQuery);
@@ -135,7 +138,7 @@ export function PartnerManagement() {
 
       // Verify admin status using the current admin's ID
       const adminQuery = query(
-        collection(db, "users"),
+        collection(db, DB_URL.users),
         where("userId", "==", adminId),
         where("role", "==", "admin")
       );
@@ -153,7 +156,7 @@ export function PartnerManagement() {
       );
 
       // Create user document with proper role
-      await addDoc(collection(db, "users"), {
+      await addDoc(collection(db, DB_URL.users), {
         userId: partnerUser.uid,
         email: newPartner.email,
         fullName: newPartner.fullName,
@@ -164,7 +167,7 @@ export function PartnerManagement() {
       });
 
       // Create partner record
-      await addDoc(collection(db, "partners"), {
+      await addDoc(collection(db, DB_URL.partners), {
         userId: partnerUser.uid,
         maxCoaches: newPartner.maxCoaches,
         permissions: newPartner.permissions,

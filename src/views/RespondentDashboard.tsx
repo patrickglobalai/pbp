@@ -1,24 +1,34 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { Brain, AlertCircle, History, ArrowLeft, ArrowRight } from 'lucide-react';
-import { onAuthStateChanged } from 'firebase/auth';
+import { Brain, AlertCircle, History, ArrowLeft, ArrowRight, LogOut } from 'lucide-react';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { ResultsGraph } from '../components/ResultsGraph';
 import { HarmonicGraph } from '../components/HarmonicGraph';
 import { useResults } from '../contexts/ResultsContext';
+import { useAuth } from '../contexts/AuthContext';
 import type { AssessmentResult } from '../types/results';
 
 export function RespondentDashboard() {
   const navigate = useNavigate();
+  const { hasAIAccess } = useAuth();
   const { getResults, isLoading: isLoadingResults, error } = useResults();
   const [results, setResults] = useState<AssessmentResult[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [canRetake, setCanRetake] = useState(false);
   const [nextRetakeDate, setNextRetakeDate] = useState<Date | null>(null);
-  const [hasAiAccess, setHasAiAccess] = useState(false);
+
+  const handleLogout = useCallback(async () => {
+    try {
+      await signOut(auth);
+      navigate('/login');
+    } catch (err) {
+      console.error('Error signing out:', err);
+    }
+  }, [navigate]);
 
   const loadResults = useCallback(async (userId: string) => {
     try {
@@ -54,21 +64,6 @@ export function RespondentDashboard() {
           
           setCanRetake(retakeEnabled && (!nextRetake || nextRetake <= new Date()));
           setNextRetakeDate(nextRetake || null);
-
-          // Check coach's tier for AI access
-          if (respondentData.coachId) {
-            const coachQuery = query(
-              collection(db, 'coaches'),
-              where('userId', '==', respondentData.coachId)
-            );
-            const coachSnapshot = await getDocs(coachQuery);
-            
-            if (!coachSnapshot.empty) {
-              const coachData = coachSnapshot.docs[0].data();
-              // Only advanced and partner tiers get AI access
-              setHasAiAccess(coachData.tier === 'advanced' || coachData.tier === 'partner');
-            }
-          }
         }
       }
     } catch (err) {
@@ -171,27 +166,36 @@ export function RespondentDashboard() {
             </div>
           </div>
 
-          {results.length > 1 && (
-            <div className="flex items-center gap-4">
-              <button
-                onClick={handleNextResult}
-                disabled={currentPage <= 1}
-                className="p-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-all disabled:opacity-50"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-              <div className="text-white/80">
-                {currentPage} of {totalVersions}
-              </div>
-              <button
-                onClick={handlePreviousResult}
-                disabled={currentPage >= totalVersions}
-                className="p-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-all disabled:opacity-50"
-              >
-                <ArrowRight className="w-5 h-5" />
-              </button>
-            </div>
-          )}
+          <div className="flex items-center gap-4">
+            {results.length > 1 && (
+              <>
+                <button
+                  onClick={handleNextResult}
+                  disabled={currentPage <= 1}
+                  className="p-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-all disabled:opacity-50"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <div className="text-white/80">
+                  {currentPage} of {totalVersions}
+                </div>
+                <button
+                  onClick={handlePreviousResult}
+                  disabled={currentPage >= totalVersions}
+                  className="p-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-all disabled:opacity-50"
+                >
+                  <ArrowRight className="w-5 h-5" />
+                </button>
+              </>
+            )}
+            <button
+              onClick={handleLogout}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-all"
+            >
+              <LogOut className="w-5 h-5" />
+              <span>Logout</span>
+            </button>
+          </div>
         </div>
 
         <div className="grid md:grid-cols-2 gap-8 mb-8">
@@ -219,7 +223,7 @@ export function RespondentDashboard() {
           </motion.div>
         </div>
 
-        {selectedResult.aiAnalysis && hasAiAccess && (
+        {selectedResult.aiAnalysis && hasAIAccess && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -256,7 +260,7 @@ export function RespondentDashboard() {
             </div>
           )}
 
-          {hasAiAccess && (
+          {hasAIAccess && (
             <Link
               to="/analysis"
               className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-medium hover:scale-105 transition-all"
@@ -266,7 +270,7 @@ export function RespondentDashboard() {
             </Link>
           )}
 
-          {!hasAiAccess && (
+          {!hasAIAccess && (
             <div className="text-white/60 text-center">
               AI Analysis is not available with your current plan.
               Please contact your coach for more information.

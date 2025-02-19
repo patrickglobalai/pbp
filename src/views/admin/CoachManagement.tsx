@@ -14,8 +14,10 @@ import {
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { createCoachAccount } from "../../lib/auth";
+import { AIAccessToggle } from "../../components/coach/AIAccessToggle";
+import { createCoachAccount, updateCoachAIAccess } from "../../lib/auth";
 import { auth, db } from "../../lib/firebase";
+import { DB_URL } from "../../utils/functions";
 
 // Create a separate Firebase app instance for coach creation
 const coachAuthApp = initializeApp(
@@ -39,6 +41,7 @@ interface Coach {
   assessmentCode: string;
   tier: string;
   aiAnalysisAccess: boolean;
+  manualAiAccess: boolean;
   user: {
     fullName: string;
     email: string;
@@ -55,12 +58,14 @@ export function CoachManagement() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [selectedCoach, setSelectedCoach] = useState<Coach | null>(null);
   const [newCoach, setNewCoach] = useState({
     email: "",
     password: "",
     fullName: "",
     tier: "basic",
   });
+  const [isUpdatingAccess, setIsUpdatingAccess] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -75,7 +80,7 @@ export function CoachManagement() {
   const loadCoaches = async () => {
     try {
       setIsLoading(true);
-      const coachesRef = collection(db, "coaches");
+      const coachesRef = collection(db, DB_URL.coaches);
       const coachesSnapshot = await getDocs(coachesRef);
 
       const coachesData = await Promise.all(
@@ -84,19 +89,22 @@ export function CoachManagement() {
 
           // Get user data
           const userDoc = await getDocs(
-            query(collection(db, "users"), where("userId", "==", data.userId))
+            query(
+              collection(db, DB_URL.users),
+              where("userId", "==", data.userId)
+            )
           );
           const userData = userDoc.docs[0]?.data();
 
           // Get stats
           const respondentsQuery = query(
-            collection(db, "respondents"),
+            collection(db, DB_URL.respondents),
             where("coachId", "==", data.userId)
           );
           const respondentsSnapshot = await getDocs(respondentsQuery);
 
           const completedQuery = query(
-            collection(db, "results"),
+            collection(db, DB_URL.results),
             where("coachId", "==", data.userId)
           );
           const completedSnapshot = await getDocs(completedQuery);
@@ -107,6 +115,7 @@ export function CoachManagement() {
             assessmentCode: data.assessmentCode,
             tier: data.tier,
             aiAnalysisAccess: data.aiAnalysisAccess,
+            manualAiAccess: data.manualAiAccess,
             user: {
               fullName: userData?.fullName || "",
               email: userData?.email || "",
@@ -132,14 +141,39 @@ export function CoachManagement() {
     e.preventDefault();
     try {
       setIsLoading(true);
+      const adminId = auth.currentUser?.uid;
 
-      const coachId = await createCoachAccount(coachAuth, {
-        ...newCoach,
+      // Verify admin status using the current admin's ID
+      const adminQuery = query(
+        collection(db, DB_URL.users),
+        where("userId", "==", adminId),
+        where("role", "==", "admin")
+      );
+      const adminSnapshot = await getDocs(adminQuery);
+
+      if (adminSnapshot.empty) {
+        throw new Error("Insufficient permissions");
+      }
+
+      // Create Firebase auth user for coach using separate auth instance
+      const { user: coachUser } = await createUserWithEmailAndPassword(
+        coachAuth,
+        newCoach.email,
+        newCoach.password
+      );
+
+      // Create user document with proper role using setDoc with auth UID
+      await createCoachAccount(coachAuth, {
+        email: newCoach.email,
+        password: newCoach.password,
+        fullName: newCoach.fullName,
+        tier: newCoach.tier,
+        partnerId: "",
         assessmentCode: generateAssessmentCode(),
-        aiAnalysisAccess: ["basic_plus", "advanced", "partner"].includes(
-          newCoach.tier
-        ),
       });
+
+      // Sign out the coach user from the secondary auth instance
+      await coachAuth.signOut();
 
       setShowAddModal(false);
       loadCoaches();
@@ -153,6 +187,31 @@ export function CoachManagement() {
       setError("Failed to add coach");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleToggleAIAccess = async (
+    coachId: string,
+    currentAccess: boolean
+  ) => {
+    try {
+      setIsUpdatingAccess(coachId);
+      const success = await updateCoachAIAccess(coachId, !currentAccess);
+
+      if (success) {
+        setCoaches((prev) =>
+          prev.map((coach) =>
+            coach.userId === coachId
+              ? { ...coach, aiAnalysisAccess: !currentAccess }
+              : coach
+          )
+        );
+      }
+    } catch (err) {
+      console.error("Error toggling AI access:", err);
+      setError("Failed to update AI access");
+    } finally {
+      setIsUpdatingAccess(null);
     }
   };
 
@@ -230,23 +289,32 @@ export function CoachManagement() {
                     <span>{coach.stats.completedAssessments} completed</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      /* Handle edit */
-                    }}
-                    className="p-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-all"
-                  >
-                    <Edit2 className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={() => {
-                      /* Handle delete */
-                    }}
-                    className="p-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-all"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
+                <div className="flex items-center gap-4">
+                  <AIAccessToggle
+                    enabled={coach.aiAnalysisAccess}
+                    onToggle={() =>
+                      handleToggleAIAccess(coach.userId, coach.aiAnalysisAccess)
+                    }
+                    isLoading={isUpdatingAccess === coach.userId}
+                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        /* Handle edit */
+                      }}
+                      className="p-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-all"
+                    >
+                      <Edit2 className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        /* Handle delete */
+                      }}
+                      className="p-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-all"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             ))}

@@ -5,7 +5,7 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../lib/firebase";
-
+import { DB_URL } from "../../utils/functions";
 interface AssessmentCode {
   id: string;
   coachId: string;
@@ -39,7 +39,7 @@ export function AssessmentCodes() {
   const loadCodes = async () => {
     try {
       setIsLoading(true);
-      const codesRef = collection(db, "assessment_codes");
+      const codesRef = collection(db, DB_URL.assessment_codes);
       const codesSnapshot = await getDocs(codesRef);
 
       const codesData = await Promise.all(
@@ -51,7 +51,7 @@ export function AssessmentCodes() {
           if (data?.coachId) {
             coachDoc = await getDocs(
               query(
-                collection(db, "users"),
+                collection(db, DB_URL.users),
                 where("userId", "==", data.coachId)
               )
             );
@@ -85,14 +85,14 @@ export function AssessmentCodes() {
 
   const loadCoaches = async () => {
     try {
-      const coachesRef = collection(db, "coaches");
+      const coachesRef = collection(db, DB_URL.coaches);
       const coachesSnapshot = await getDocs(coachesRef);
 
       const coachesData = await Promise.all(
         coachesSnapshot.docs.map(async (doc) => {
           const data = doc.data();
           const userDoc = await getDocs(
-            query(collection(db, "users"), where("userId", "==", data.userId))
+            query(collection(db, DB_URL.users), where("userId", "==", data.userId))
           );
           const userData = userDoc.docs[0]?.data();
 
@@ -123,7 +123,7 @@ export function AssessmentCodes() {
       setIsLoading(true);
 
       const newCode = generateCode();
-      await addDoc(collection(db, "assessment_codes"), {
+      await addDoc(collection(db, DB_URL.assessment_codes), {
         coachId: selectedCoach,
         code: newCode,
         used: false,

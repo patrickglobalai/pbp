@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { isUserCoach } from "../lib/auth";
 import { auth, db } from "../lib/firebase";
+import { DB_URL } from "../utils/functions";
 
 export function CoachDashboard() {
   const navigate = useNavigate();
@@ -39,7 +40,7 @@ export function CoachDashboard() {
 
       // Get coach document to check both AI access types
       const coachQuery = query(
-        collection(db, "coaches"),
+        collection(db, DB_URL.coaches),
         where("userId", "==", auth.currentUser.uid)
       );
       const coachSnapshot = await getDocs(coachQuery);
@@ -89,7 +90,7 @@ export function CoachDashboard() {
       if (!auth.currentUser) return;
 
       const coachQuery = query(
-        collection(db, "coaches"),
+        collection(db, DB_URL.coaches),
         where("userId", "==", auth.currentUser.uid)
       );
       const coachSnapshot = await getDocs(coachQuery);
@@ -110,7 +111,7 @@ export function CoachDashboard() {
 
       // Get respondents for this coach
       const respondentsQuery = query(
-        collection(db, "respondents"),
+        collection(db, DB_URL.respondents),
         where("coachId", "==", userId)
       );
       const respondentsSnapshot = await getDocs(respondentsQuery);
@@ -118,7 +119,7 @@ export function CoachDashboard() {
 
       // Get completed assessments
       const completedQuery = query(
-        collection(db, "results"),
+        collection(db, DB_URL.results),
         where("coachId", "==", userId)
       );
       const completedSnapshot = await getDocs(completedQuery);
@@ -129,7 +130,7 @@ export function CoachDashboard() {
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
       const activeQuery = query(
-        collection(db, "respondents"),
+        collection(db, DB_URL.respondents),
         where("coachId", "==", userId),
         where("lastAccessedAt", ">=", thirtyDaysAgo)
       );

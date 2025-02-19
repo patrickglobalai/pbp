@@ -4,7 +4,7 @@ import { AlertCircle, ArrowLeft, Copy, Key, Plus } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { auth, db } from "../../lib/firebase";
-
+import { DB_URL } from "../../utils/functions";
 interface AssessmentCode {
   id: string;
   code: string;
@@ -27,14 +27,13 @@ export function PartnerAssessmentCodes() {
     }
   }, [auth?.currentUser?.uid]);
 
-
   const loadCodes = async () => {
     try {
       setIsLoading(true);
       const partnerId = auth.currentUser?.uid;
 
       const codesQuery = query(
-        collection(db, "assessment_codes"),
+        collection(db, DB_URL.assessment_codes),
         where("partnerId", "==", partnerId)
       );
       const codesSnapshot = await getDocs(codesQuery);
@@ -65,7 +64,7 @@ export function PartnerAssessmentCodes() {
       const partnerId = auth.currentUser?.uid;
 
       const newCode = generateCode();
-      await addDoc(collection(db, "assessment_codes"), {
+      await addDoc(collection(db, DB_URL.assessment_codes), {
         code: newCode,
         partnerId,
         tier: selectedTier,

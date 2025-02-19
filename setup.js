@@ -5,7 +5,7 @@ const {
   signInWithEmailAndPassword,
 } = require("firebase/auth");
 const { getFirestore, doc, setDoc } = require("firebase/firestore");
-
+const { DB_URL } = require("./src/utils/functions");
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -50,7 +50,7 @@ async function setupAdmin() {
 
     // Create or update user document with admin role
     await setDoc(
-      doc(db, "users", user.uid),
+      doc(db, DB_URL.users, user.uid),
       {
         userId: user.uid,
         email: "naderdahdal8008@gmail.com",
@@ -64,7 +64,7 @@ async function setupAdmin() {
 
     // Create or update admin permissions
     await setDoc(
-      doc(db, "admins", user.uid),
+      doc(db, DB_URL.adminss, user.uid),
       {
         userId: user.uid,
         permissions: {

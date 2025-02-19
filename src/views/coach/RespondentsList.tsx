@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { Users, ArrowLeft, AlertCircle, Eye } from 'lucide-react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where, updateDoc, doc } from 'firebase/firestore';
 import { auth, db } from '../../lib/firebase';
+import { AIAccessToggle } from '../../components/coach/AIAccessToggle';
 
 interface Respondent {
   id: string;
@@ -12,6 +13,7 @@ interface Respondent {
   email: string;
   assessmentStatus: 'pending' | 'completed';
   completedAt?: Date;
+  aiAccessEnabled?: boolean;
 }
 
 export function RespondentsList() {
@@ -19,66 +21,93 @@ export function RespondentsList() {
   const [respondents, setRespondents] = useState<Respondent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [updatingAIAccess, setUpdatingAIAccess] = useState<string | null>(null);
 
   useEffect(() => {
-    const loadRespondents = async () => {
-      if (!auth.currentUser) {
-        navigate('/login');
-        return;
-      }
-
-      try {
-        setIsLoading(true);
-        const coachId = auth.currentUser.uid;
-        
-        // Get respondents for this coach
-        const respondentsQuery = query(
-          collection(db, 'respondents'),
-          where('coachId', '==', coachId)
-        );
-        const respondentsSnapshot = await getDocs(respondentsQuery);
-        
-        // Get user data and results for each respondent
-        const respondentsData = await Promise.all(respondentsSnapshot.docs.map(async (doc) => {
-          const data = doc.data();
-          
-          // Get user data
-          const userDoc = await getDocs(query(
-            collection(db, 'users'),
-            where('userId', '==', data.userId)
-          ));
-          const userData = userDoc.docs[0]?.data();
-          
-          // Get results if completed
-          const resultsQuery = query(
-            collection(db, 'results'),
-            where('userId', '==', data.userId)
-          );
-          const resultsSnapshot = await getDocs(resultsQuery);
-          const hasResults = !resultsSnapshot.empty;
-          const results = hasResults ? resultsSnapshot.docs[0].data() : null;
-
-          return {
-            id: doc.id,
-            userId: data.userId,
-            fullName: userData?.fullName || '',
-            email: userData?.email || '',
-            assessmentStatus: hasResults ? 'completed' : 'pending',
-            completedAt: results?.completedAt?.toDate()
-          };
-        }));
-
-        setRespondents(respondentsData);
-      } catch (err) {
-        console.error('Error loading respondents:', err);
-        setError('Failed to load respondents');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    if (!auth.currentUser) {
+      navigate('/login');
+      return;
+    }
 
     loadRespondents();
   }, [navigate]);
+
+  const loadRespondents = async () => {
+    try {
+      setIsLoading(true);
+      const coachId = auth.currentUser?.uid;
+      
+      // Get respondents for this coach
+      const respondentsQuery = query(
+        collection(db, 'respondents'),
+        where('coachId', '==', coachId)
+      );
+      const respondentsSnapshot = await getDocs(respondentsQuery);
+      
+      // Get user data and results for each respondent
+      const respondentsData = await Promise.all(respondentsSnapshot.docs.map(async (doc) => {
+        const data = doc.data();
+        
+        // Get user data
+        const userDoc = await getDocs(query(
+          collection(db, 'users'),
+          where('userId', '==', data.userId)
+        ));
+        const userData = userDoc.docs[0]?.data();
+        
+        // Get results if completed
+        const resultsQuery = query(
+          collection(db, 'results'),
+          where('userId', '==', data.userId)
+        );
+        const resultsSnapshot = await getDocs(resultsQuery);
+        const hasResults = !resultsSnapshot.empty;
+        const results = hasResults ? resultsSnapshot.docs[0].data() : null;
+
+        return {
+          id: doc.id,
+          userId: data.userId,
+          fullName: userData?.fullName || '',
+          email: userData?.email || '',
+          assessmentStatus: hasResults ? 'completed' : 'pending',
+          completedAt: results?.completedAt?.toDate(),
+          aiAccessEnabled: data.aiAccessEnabled || false
+        };
+      }));
+
+      setRespondents(respondentsData);
+    } catch (err) {
+      console.error('Error loading respondents:', err);
+      setError('Failed to load respondents');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleToggleAIAccess = async (respondentId: string, currentAccess: boolean) => {
+    try {
+      setUpdatingAIAccess(respondentId);
+      
+      // Update respondent document
+      const respondentRef = doc(db, 'respondents', respondentId);
+      await updateDoc(respondentRef, {
+        aiAccessEnabled: !currentAccess,
+        updatedAt: new Date()
+      });
+
+      // Update local state
+      setRespondents(prev => prev.map(respondent => 
+        respondent.id === respondentId 
+          ? { ...respondent, aiAccessEnabled: !currentAccess }
+          : respondent
+      ));
+    } catch (err) {
+      console.error('Error toggling AI access:', err);
+      setError('Failed to update AI access');
+    } finally {
+      setUpdatingAIAccess(null);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -150,14 +179,21 @@ export function RespondentsList() {
                       )}
                     </div>
                   </div>
-                  {respondent.assessmentStatus === 'completed' && (
-                    <Link
-                      to={`/coach/results/${respondent.userId}`}
-                      className="p-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-all"
-                    >
-                      <Eye className="w-5 h-5" />
-                    </Link>
-                  )}
+                  <div className="flex items-center gap-4">
+                    <AIAccessToggle
+                      enabled={respondent.aiAccessEnabled || false}
+                      onToggle={() => handleToggleAIAccess(respondent.id, respondent.aiAccessEnabled || false)}
+                      isLoading={updatingAIAccess === respondent.id}
+                    />
+                    {respondent.assessmentStatus === 'completed' && (
+                      <Link
+                        to={`/coach/results/${respondent.userId}`}
+                        className="p-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-all"
+                      >
+                        <Eye className="w-5 h-5" />
+                      </Link>
+                    )}
+                  </div>
                 </motion.div>
               ))}
             </div>

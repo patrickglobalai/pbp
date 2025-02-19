@@ -16,7 +16,7 @@ import React, {
 } from "react";
 import { db } from "../lib/firebase";
 import type { AssessmentResult, ResultsContextType } from "../types/results";
-import { displayErrorMessage } from "../utils/functions";
+import { DB_URL, displayErrorMessage } from "../utils/functions";
 
 const ResultsContext = createContext<ResultsContextType | undefined>(undefined);
 
@@ -49,7 +49,7 @@ export function ResultsProvider({ children }: { children: React.ReactNode }) {
         if (requestingUserId && requestingUserId !== userId) {
           // Get respondent document to verify coachId
           const respondentQuery = query(
-            collection(db, "respondents"),
+            collection(db, DB_URL.respondents),
             where("userId", "==", userId),
             where("coachId", "==", requestingUserId)
           );
@@ -61,7 +61,7 @@ export function ResultsProvider({ children }: { children: React.ReactNode }) {
         }
 
         const resultsQuery = query(
-          collection(db, "results"),
+          collection(db, DB_URL.results),
           where("userId", "==", userId),
           orderBy("completedAt", "desc"),
           limit(1)
@@ -110,7 +110,7 @@ export function ResultsProvider({ children }: { children: React.ReactNode }) {
 
         // Get the coachId from respondents collection
         const respondentsQuery = query(
-          collection(db, "respondents"),
+          collection(db, DB_URL.respondents),
           where("userId", "==", results.userId)
         );
         const respondentsSnapshot = await getDocs(respondentsQuery);
@@ -122,7 +122,7 @@ export function ResultsProvider({ children }: { children: React.ReactNode }) {
           console.log("Found coachId:", coachId); // Debug log
 
           // Create a new document in the results collection with coachId
-          const docRef = await addDoc(collection(db, "results"), {
+          const docRef = await addDoc(collection(db, DB_URL.results), {
             ...results,
             coachId, // Add the coachId here
             completedAt: new Date(),

@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Brain, ArrowLeft, AlertCircle, Send } from 'lucide-react';
 import { getAIAnalysis } from '../../services/analysis';
 import ReactMarkdown from 'react-markdown';
 import { characteristics } from '../../data/characteristics';
 import { harmonicLevels } from '../../data/harmonicLevels';
+import { auth } from '../../lib/firebase';
+import { checkCoachAIAccess } from '../../lib/auth';
 
 const analysisButtons = [
   { id: 'intro', label: 'Intro to Report', query: 'Summarize my assessment results, highlighting key insights and themes. Provide a clear overview of my traits, Harmonic Scale position, and areas for personal and professional growth.' },
@@ -19,12 +21,39 @@ const analysisButtons = [
 ];
 
 export function ManualAIAnalysis() {
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [hasAccess, setHasAccess] = useState(false);
+  const [isCheckingAccess, setIsCheckingAccess] = useState(true);
   const [messages, setMessages] = useState<Array<{id: string; content: string; sender: 'user' | 'ai'}>>([]);
   const [scores, setScores] = useState<Record<string, number>>({});
   const [harmonicScores, setHarmonicScores] = useState<Record<string, number>>({});
   const [inputMessage, setInputMessage] = useState('');
+
+  useEffect(() => {
+    const checkAccess = async () => {
+      if (!auth.currentUser) {
+        navigate('/login');
+        return;
+      }
+
+      try {
+        const aiAccess = await checkCoachAIAccess(auth.currentUser.uid);
+        setHasAccess(aiAccess);
+        if (!aiAccess) {
+          setError('You do not have access to AI analysis features');
+        }
+      } catch (err) {
+        console.error('Error checking access:', err);
+        setError('Failed to verify access permissions');
+      } finally {
+        setIsCheckingAccess(false);
+      }
+    };
+
+    checkAccess();
+  }, [navigate]);
 
   const formatDataForAI = (prompt: string) => {
     // Format characteristic scores
@@ -107,6 +136,35 @@ Based on these results, ${prompt}
       setIsLoading(false);
     }
   };
+
+  if (isCheckingAccess) {
+    return (
+      <div className="min-h-screen ai-gradient-bg py-12 px-4">
+        <div className="max-w-7xl mx-auto text-center">
+          <div className="text-white">Checking access permissions...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!hasAccess) {
+    return (
+      <div className="min-h-screen ai-gradient-bg py-12 px-4">
+        <div className="max-w-7xl mx-auto text-center">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-white mb-1">Access Denied</h1>
+            <p className="text-white/80 mb-4">You do not have access to AI analysis features</p>
+            <Link
+              to="/coach"
+              className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-medium hover:scale-105 transition-all"
+            >
+              Back to Dashboard
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen ai-gradient-bg py-12 px-4">

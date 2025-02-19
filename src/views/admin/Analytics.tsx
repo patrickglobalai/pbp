@@ -18,6 +18,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../lib/firebase";
+import { DB_URL } from "../../utils/functions";
 
 export function Analytics() {
   const [isLoading, setIsLoading] = useState(true);
@@ -43,12 +44,15 @@ export function Analytics() {
       setIsLoading(true);
 
       // Get total assessments
-      const assessmentsRef = collection(db, "respondents");
+      const assessmentsRef = collection(db, DB_URL.respondents);
       const totalSnapshot = await getDocs(assessmentsRef);
       const totalCount = totalSnapshot.size;
 
       // Get completed assessments
-      const completedQuery = query(assessmentsRef, where("results", "!=", {}));
+      const completedQuery = query(
+        assessmentsRef,
+        where(DB_URL.results, "!=", {})
+      );
       const completedSnapshot = await getDocs(completedQuery);
       const completedCount = completedSnapshot.size;
 

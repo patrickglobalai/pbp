@@ -5,7 +5,7 @@ import { AlertCircle, ArrowLeft, Edit2, Trash2, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { auth, db } from "../../lib/firebase";
-import { displayErrorMessage } from "../../utils/functions";
+import { DB_URL, displayErrorMessage } from "../../utils/functions";
 interface Coach {
   id: string;
   userId: string;
@@ -44,7 +44,7 @@ export function PartnerCoachManagement() {
 
       // Get coaches for this partner
       const coachesQuery = query(
-        collection(db, "coaches"),
+        collection(db, DB_URL.coaches),
         where("partnerId", "==", partnerId)
       );
       const coachesSnapshot = await getDocs(coachesQuery);
@@ -55,19 +55,22 @@ export function PartnerCoachManagement() {
 
           // Get user data
           const userDoc = await getDocs(
-            query(collection(db, "users"), where("userId", "==", data.userId))
+            query(
+              collection(db, DB_URL.users),
+              where("userId", "==", data.userId)
+            )
           );
           const userData = userDoc.docs[0]?.data();
 
           // Get stats
           const respondentsQuery = query(
-            collection(db, "respondents"),
+            collection(db, DB_URL.respondents),
             where("coachId", "==", data.userId)
           );
           const respondentsSnapshot = await getDocs(respondentsQuery);
 
           const completedQuery = query(
-            collection(db, "results"),
+            collection(db, DB_URL.results),
             where("coachId", "==", data.userId)
           );
           const completedSnapshot = await getDocs(completedQuery);

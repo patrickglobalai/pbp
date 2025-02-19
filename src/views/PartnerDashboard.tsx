@@ -13,7 +13,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { isUserPartner } from "../lib/auth";
 import { auth, db } from "../lib/firebase";
-import { displayErrorMessage } from "../utils/functions";
+import { DB_URL, displayErrorMessage } from "../utils/functions";
 
 export function PartnerDashboard() {
   const navigate = useNavigate();
@@ -76,7 +76,7 @@ export function PartnerDashboard() {
       }
 
       // get current user from db
-      const userDoc = await getDoc(doc(db, "users", userId));
+      const userDoc = await getDoc(doc(db, DB_URL.users, userId));
       const userData = userDoc.data();
 
       if (!userData) {
@@ -88,7 +88,7 @@ export function PartnerDashboard() {
       // Get coaches count
 
       const coachesQuery = query(
-        collection(db, "coaches"),
+        collection(db, DB_URL.coaches),
         where("partnerId", "==", userId)
       );
       const coachesSnapshot = await getDocs(coachesQuery);
@@ -96,7 +96,7 @@ export function PartnerDashboard() {
 
       // Get assessment codes count
       const codesQuery = query(
-        collection(db, "assessment_codes"),
+        collection(db, DB_URL.assessment_codes),
         where("partnerId", "==", userId),
         where("used", "==", false)
       );
@@ -125,7 +125,7 @@ export function PartnerDashboard() {
     if (coachIds.length === 0) return 0;
 
     const assessmentsQuery = query(
-      collection(db, "respondents"),
+      collection(db, DB_URL.respondents),
       where("coachId", "in", coachIds)
     );
     const assessmentsSnapshot = await getDocs(assessmentsQuery);

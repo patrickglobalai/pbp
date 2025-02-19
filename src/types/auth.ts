@@ -42,6 +42,7 @@ export interface Coach {
   assessmentCode: string;
   tier: 'basic' | 'basic_plus' | 'advanced' | 'partner';
   aiAnalysisAccess: boolean;
+  manualAiAccess: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

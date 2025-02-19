@@ -127,12 +127,18 @@ export function PartnerManagement() {
           // Get total respondents only if there are coaches
           let respondentsCount = 0;
           if (coachIds.length > 0) {
-            const respondentsQuery = query(
-              collection(db, DB_URL.respondents),
-              where("coachId", "in", coachIds)
-            );
-            const respondentsSnapshot = await getDocs(respondentsQuery);
-            respondentsCount = respondentsSnapshot.size;
+            let totalRespondents = 0;
+            // Process coach IDs in batches of 29
+            for (let i = 0; i < coachIds.length; i += 29) {
+              const batchCoachIds = coachIds.slice(i, i + 29);
+              const respondentsQuery = query(
+                collection(db, DB_URL.respondents),
+                where("coachId", "in", batchCoachIds)
+              );
+              const respondentsSnapshot = await getDocs(respondentsQuery);
+              totalRespondents += respondentsSnapshot.size;
+            }
+            respondentsCount = totalRespondents;
           }
 
           return {

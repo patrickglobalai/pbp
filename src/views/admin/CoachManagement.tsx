@@ -1,5 +1,9 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, onAuthStateChanged } from "firebase/auth";
+import {
+  createUserWithEmailAndPassword,
+  getAuth,
+  onAuthStateChanged,
+} from "firebase/auth";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { motion } from "framer-motion";
 import {
@@ -68,6 +72,7 @@ export function CoachManagement() {
   const [isUpdatingAccess, setIsUpdatingAccess] = useState<string | null>(null);
 
   useEffect(() => {
+    loadCoaches();
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user?.uid) {
         loadCoaches();
@@ -79,9 +84,12 @@ export function CoachManagement() {
 
   const loadCoaches = async () => {
     try {
+      console.log("Loading coaches");
       setIsLoading(true);
       const coachesRef = collection(db, DB_URL.coaches);
       const coachesSnapshot = await getDocs(coachesRef);
+
+      console.log("Coaches snapshot:", coachesSnapshot.docs.length);
 
       const coachesData = await Promise.all(
         coachesSnapshot.docs.map(async (doc) => {
@@ -143,11 +151,12 @@ export function CoachManagement() {
       setIsLoading(true);
       const adminId = auth.currentUser?.uid;
 
+      console.log("Admin ID:", adminId);
+
       // Verify admin status using the current admin's ID
       const adminQuery = query(
         collection(db, DB_URL.users),
-        where("userId", "==", adminId),
-        where("role", "==", "admin")
+        where("userId", "==", adminId)
       );
       const adminSnapshot = await getDocs(adminQuery);
 

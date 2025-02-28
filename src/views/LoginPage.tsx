@@ -161,7 +161,7 @@ export function LoginPage() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user?.uid && hasUserInput) {
         if (credentials.email === "" && credentials.password === "") {
-          await auth.signOut();
+          // await auth.signOut();
         }
         handleUserLoggedIn(user?.uid);
       }

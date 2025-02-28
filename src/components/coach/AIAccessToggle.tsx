@@ -12,7 +12,6 @@ export function AIAccessToggle({
   onToggle,
   isLoading = false,
 }: Props) {
-  console.log("enabled", enabled);
   return (
     <motion.button
       onClick={onToggle}

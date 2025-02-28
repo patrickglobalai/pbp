@@ -1,10 +1,10 @@
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { motion } from "framer-motion";
-import { AlertCircle, Brain, Key, Users } from "lucide-react";
+import { AlertCircle, Brain, Key, LogOut, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { db } from "../lib/firebase";
+import { auth, db } from "../lib/firebase";
 import { isUserAdmin } from "../lib/firebase-admin";
 import { DB_URL } from "../utils/functions";
 export function AdminDashboard() {
@@ -45,6 +45,11 @@ export function AdminDashboard() {
       console.error("Admin access check failed:", err);
       navigate("/");
     }
+  };
+
+  const handleLogout = () => {
+    auth.signOut();
+    navigate("/login");
   };
 
   const loadDashboardStats = async () => {
@@ -103,12 +108,22 @@ export function AdminDashboard() {
   return (
     <div className="min-h-screen ai-gradient-bg py-12 px-4">
       <div className="max-w-7xl mx-auto">
-        <div className="flex items-center gap-4 mb-8">
-          <Brain className="w-12 h-12 text-white" />
-          <div>
-            <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
-            <p className="text-white/80">Manage your assessment system</p>
+        <div className="flex items-center justify-between gap-4 mb-8">
+          <div className="flex items-center gap-4">
+            <Brain className="w-12 h-12 text-white" />
+            <div>
+              <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
+              <p className="text-white/80">Manage your assessment system</p>
+            </div>
           </div>
+          <button
+            onClick={handleLogout}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 text-white 
+              hover:bg-white/20 transition-all"
+          >
+            <LogOut className="w-5 h-5" />
+            <span>Logout</span>
+          </button>
         </div>
 
         {error && (

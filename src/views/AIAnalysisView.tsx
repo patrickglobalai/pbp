@@ -512,24 +512,28 @@ export function AIAnalysisView() {
           </form>
         </div>
 
-        <div className="flex gap-4 mb-6">
-          {/* export chat history */}
-          <button
-            onClick={() => exportChatHistory()}
-            className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 
-            text-white font-medium hover:scale-105 transition-all disabled:opacity-50 my-4"
-          >
+        <div className="glass-effect rounded-3xl p-6 mb-6">
+          <h3 className="text-lg font-bold text-white mb-4">
             Export Chat History
-          </button>
+          </h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <button
+              onClick={() => exportChatHistory()}
+              className="px-4 py-3 rounded-xl bg-white/10 text-white hover:bg-white/20 
+                  transition-all disabled:opacity-50 text-sm"
+            >
+              Export Chat History
+            </button>
 
-          {/* copy as JSON */}
-          <button
-            onClick={() => copyChatHistory()}
-            className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 
-            text-white font-medium hover:scale-105 transition-all disabled:opacity-50 my-4"
-          >
-            Copy Chat History
-          </button>
+            {/* copy as JSON */}
+            <button
+              onClick={() => copyChatHistory()}
+              className="px-4 py-3 rounded-xl bg-white/10 text-white hover:bg-white/20 
+                  transition-all disabled:opacity-50 text-sm"
+            >
+              Copy Chat History
+            </button>
+          </div>
         </div>
 
         {/* Analysis Buttons */}

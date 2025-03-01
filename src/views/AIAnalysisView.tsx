@@ -113,7 +113,7 @@ export function AIAnalysisView() {
       const lines = pdf.splitTextToSize(message.content, maxWidth);
 
       // Calculate height needed for this message
-      const messageHeight = lines.length * lineHeight + 10;
+      const messageHeight = (lines.length + 1) * lineHeight + 15; // +1 for sender name
 
       // Check if we need a new page
       if (yPosition + messageHeight > pageHeight - margin) {
@@ -123,11 +123,14 @@ export function AIAnalysisView() {
 
       if (message.sender === "user") {
         // User messages on the right
-        pdf.setFillColor(220, 248, 198); // WhatsApp green
+        pdf.setFillColor(99, 102, 241); // Bluish-purple color (indigo-600)
 
         // Calculate bubble width based on longest line
         const bubbleWidth =
-          Math.max(...lines.map((line) => pdf.getTextWidth(line))) + 10;
+          Math.max(
+            pdf.getTextWidth("User"),
+            ...lines.map((line) => pdf.getTextWidth(line))
+          ) + 10;
 
         // Draw bubble
         pdf.roundedRect(
@@ -140,13 +143,18 @@ export function AIAnalysisView() {
           "F"
         );
 
+        // Add sender name
+        pdf.setTextColor(255, 255, 255); // White text for better contrast
+        pdf.setFont(undefined, "bold");
+        pdf.text("User", pageWidth - margin - bubbleWidth + 5, yPosition + 5);
+        pdf.setFont(undefined, "normal");
+
         // Add message text
-        pdf.setTextColor(0, 0, 0);
         lines.forEach((line, index) => {
           pdf.text(
             line,
             pageWidth - margin - bubbleWidth + 5,
-            yPosition + index * lineHeight
+            yPosition + 15 + index * lineHeight
           );
         });
       } else {
@@ -155,7 +163,10 @@ export function AIAnalysisView() {
 
         // Calculate bubble width based on longest line
         const bubbleWidth =
-          Math.max(...lines.map((line) => pdf.getTextWidth(line))) + 10;
+          Math.max(
+            pdf.getTextWidth("AI"),
+            ...lines.map((line) => pdf.getTextWidth(line))
+          ) + 10;
 
         // Draw bubble
         pdf.roundedRect(
@@ -168,10 +179,19 @@ export function AIAnalysisView() {
           "F"
         );
 
-        // Add message text
+        // Add sender name
         pdf.setTextColor(0, 0, 0);
+        pdf.setFont(undefined, "bold");
+        pdf.text("AI", margin + 5, yPosition + 5);
+        pdf.setFont(undefined, "normal");
+
+        // Add message text
         lines.forEach((line, index) => {
-          pdf.text(line, margin + 5, yPosition + index * lineHeight);
+          pdf.text(
+            line,
+            margin + 5,
+            yPosition + 15 + index * lineHeight // Added padding
+          );
         });
       }
 
@@ -496,23 +516,25 @@ export function AIAnalysisView() {
           </form>
         </div>
 
-        {/* export chat history */}
-        <button
-          onClick={() => exportChatHistory()}
-          className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 
+        <div className="flex gap-4 mb-6">
+          {/* export chat history */}
+          <button
+            onClick={() => exportChatHistory()}
+            className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 
             text-white font-medium hover:scale-105 transition-all disabled:opacity-50 my-4"
-        >
-          Export Chat History
-        </button>
+          >
+            Export Chat History
+          </button>
 
-        {/* copy as JSON */}
-        <button
-          onClick={() => copyChatHistory()}
-          className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 
+          {/* copy as JSON */}
+          <button
+            onClick={() => copyChatHistory()}
+            className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 
             text-white font-medium hover:scale-105 transition-all disabled:opacity-50 my-4"
-        >
-          Copy Chat History
-        </button>
+          >
+            Copy Chat History
+          </button>
+        </div>
 
         {/* Analysis Buttons */}
         <div className="glass-effect rounded-3xl p-6">

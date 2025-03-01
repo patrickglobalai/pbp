@@ -3,6 +3,7 @@ import { ArrowLeft, Brain, Send, Sparkles } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { toast } from "react-toastify";
 import { HarmonicGraph } from "../components/HarmonicGraph";
 import { ResultsGraph } from "../components/ResultsGraph";
 import { useAssessment } from "../contexts/AssessmentContext";
@@ -96,6 +97,8 @@ export function AIAnalysisView() {
     const lineHeight = 10;
     const margin = 10;
     const pageHeight = pdf.internal.pageSize.height;
+    const pageWidth = pdf.internal.pageSize.width;
+    const maxWidth = pageWidth - margin * 2; // Maximum width for text
 
     // Add title
     pdf.setFontSize(18);
@@ -106,44 +109,92 @@ export function AIAnalysisView() {
     pdf.setFontSize(12);
 
     messages.forEach((message) => {
+      // Split content into lines that fit the page width
+      const lines = pdf.splitTextToSize(message.content, maxWidth);
+
+      // Calculate height needed for this message
+      const messageHeight = lines.length * lineHeight + 10;
+
       // Check if we need a new page
-      if (yPosition > pageHeight - margin) {
+      if (yPosition + messageHeight > pageHeight - margin) {
         pdf.addPage();
         yPosition = margin;
       }
 
-      // Set color based on sender
-      pdf.setTextColor(message.sender === "user" ? 0 : 0, 0, 0); // Black for user, blue for AI
-      if (message.sender === "ai") {
-        pdf.setTextColor(0, 0, 255);
+      if (message.sender === "user") {
+        // User messages on the right
+        pdf.setFillColor(220, 248, 198); // WhatsApp green
+
+        // Calculate bubble width based on longest line
+        const bubbleWidth =
+          Math.max(...lines.map((line) => pdf.getTextWidth(line))) + 10;
+
+        // Draw bubble
+        pdf.roundedRect(
+          pageWidth - margin - bubbleWidth,
+          yPosition - 5,
+          bubbleWidth,
+          messageHeight,
+          5,
+          5,
+          "F"
+        );
+
+        // Add message text
+        pdf.setTextColor(0, 0, 0);
+        lines.forEach((line, index) => {
+          pdf.text(
+            line,
+            pageWidth - margin - bubbleWidth + 5,
+            yPosition + index * lineHeight
+          );
+        });
+      } else {
+        // AI messages on the left
+        pdf.setFillColor(240, 240, 240); // Light gray for AI
+
+        // Calculate bubble width based on longest line
+        const bubbleWidth =
+          Math.max(...lines.map((line) => pdf.getTextWidth(line))) + 10;
+
+        // Draw bubble
+        pdf.roundedRect(
+          margin,
+          yPosition - 5,
+          bubbleWidth,
+          messageHeight - 5, // Reduce height to remove extra padding
+          5,
+          5,
+          "F"
+        );
+
+        // Add message text
+        pdf.setTextColor(0, 0, 0);
+        lines.forEach((line, index) => {
+          pdf.text(line, margin + 5, yPosition + index * lineHeight);
+        });
       }
 
-      // Add sender label
-      pdf.text(`${message.sender.toUpperCase()}:`, margin, yPosition);
-      yPosition += lineHeight;
-
-      // Split content into lines that fit the page width
-      const lines = pdf.splitTextToSize(
-        message.content,
-        pdf.internal.pageSize.width - margin * 2
-      );
-
-      // Add each line
-      lines.forEach((line: string) => {
-        if (yPosition > pageHeight - margin) {
-          pdf.addPage();
-          yPosition = margin;
-        }
-        pdf.text(line, margin, yPosition);
-        yPosition += lineHeight;
-      });
-
-      // Add space between messages
-      yPosition += lineHeight;
+      yPosition += messageHeight + lineHeight;
     });
 
     // Save the PDF
     pdf.save("chat-history.pdf");
+  };
+
+  const copyChatHistory = async () => {
+    const chatHistory = messages.map((message) => ({
+      sender: message.sender,
+      content: message.content,
+    }));
+    const json = JSON.stringify(chatHistory);
+    try {
+      await navigator.clipboard.writeText(json);
+      toast.success("Chat history copied to clipboard");
+    } catch (error) {
+      console.error("Error copying chat history:", error);
+      toast.error("Failed to copy chat history");
+    }
   };
 
   useEffect(() => {
@@ -452,6 +503,15 @@ export function AIAnalysisView() {
             text-white font-medium hover:scale-105 transition-all disabled:opacity-50 my-4"
         >
           Export Chat History
+        </button>
+
+        {/* copy as JSON */}
+        <button
+          onClick={() => copyChatHistory()}
+          className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 
+            text-white font-medium hover:scale-105 transition-all disabled:opacity-50 my-4"
+        >
+          Copy Chat History
         </button>
 
         {/* Analysis Buttons */}

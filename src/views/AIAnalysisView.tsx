@@ -129,7 +129,7 @@ export function AIAnalysisView() {
         const bubbleWidth =
           Math.max(
             pdf.getTextWidth("User"),
-            ...lines.map((line) => pdf.getTextWidth(line))
+            ...lines.map((line: string) => pdf.getTextWidth(line))
           ) + 10;
 
         // Draw bubble
@@ -145,12 +145,12 @@ export function AIAnalysisView() {
 
         // Add sender name
         pdf.setTextColor(255, 255, 255); // White text for better contrast
-        pdf.setFont(undefined, "bold");
+        pdf.setFont("helvetica", "bold");
+        pdf.setFont("helvetica", "normal");
         pdf.text("User", pageWidth - margin - bubbleWidth + 5, yPosition + 5);
-        pdf.setFont(undefined, "normal");
 
         // Add message text
-        lines.forEach((line, index) => {
+        lines.forEach((line: string, index: number) => {
           pdf.text(
             line,
             pageWidth - margin - bubbleWidth + 5,
@@ -165,7 +165,7 @@ export function AIAnalysisView() {
         const bubbleWidth =
           Math.max(
             pdf.getTextWidth("AI"),
-            ...lines.map((line) => pdf.getTextWidth(line))
+            ...lines.map((line: string) => pdf.getTextWidth(line))
           ) + 10;
 
         // Draw bubble
@@ -181,17 +181,13 @@ export function AIAnalysisView() {
 
         // Add sender name
         pdf.setTextColor(0, 0, 0);
-        pdf.setFont(undefined, "bold");
+        pdf.setFont("helvetica", "bold");
+        pdf.setFont("helvetica", "normal");
         pdf.text("AI", margin + 5, yPosition + 5);
-        pdf.setFont(undefined, "normal");
 
         // Add message text
-        lines.forEach((line, index) => {
-          pdf.text(
-            line,
-            margin + 5,
-            yPosition + 15 + index * lineHeight // Added padding
-          );
+        lines.forEach((line: string, index: number) => {
+          pdf.text(line, margin + 5, yPosition + 15 + index * lineHeight);
         });
       }
 

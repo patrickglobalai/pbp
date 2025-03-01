@@ -1,5 +1,12 @@
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDocs,
+  query,
+  updateDoc,
+  where,
+} from "firebase/firestore";
 import { motion } from "framer-motion";
 import { AlertCircle, Brain, Key, LogOut, Users } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
@@ -20,6 +27,11 @@ export function CoachDashboard() {
   const [assessmentCode, setAssessmentCode] = useState<string>("");
   const [hasAiAccess, setHasAiAccess] = useState(false);
   const [hasManualAiAccess, setHasManualAiAccess] = useState(false);
+
+  const [data, setData] = useState({
+    affiliationLink: "",
+    affiliationButtonText: "",
+  });
 
   useEffect(() => {
     checkCoachAccess();
@@ -51,6 +63,10 @@ export function CoachDashboard() {
         setHasAiAccess(coachData.aiAnalysisAccess === true);
         // Check for manual AI access (basic plus tier)
         setHasManualAiAccess(coachData.manualAiAccess === true);
+        setData({
+          affiliationLink: coachData?.affiliationLink || "",
+          affiliationButtonText: coachData?.affiliationButtonText || "",
+        });
       }
     } catch (err) {
       console.error("Error checking AI access:", err);
@@ -297,6 +313,52 @@ export function CoachDashboard() {
           </h2>
           <div className="text-white/60 text-center py-8">
             Activity feed coming soon...
+          </div>
+        </div>
+
+        <div className="glass-effect rounded-3xl p-8 my-8">
+          <h2 className="text-2xl font-bold text-white mb-6">Affiliation</h2>
+          <div className="text-white/60 text-center py-8 flex flex-col gap-4 max-w-md mx-auto">
+            {/* a button text, for the input field, to copy the affiliation link */}
+            <div className="flex flex-col gap-2">
+              <label htmlFor="affiliationLink">Affiliation Link</label>
+              <input
+                type="text"
+                value={data.affiliationLink}
+                onChange={(e) =>
+                  setData({ ...data, affiliationLink: e.target.value })
+                }
+                className="w-full px-4 py-2 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-all"
+              />
+              <label htmlFor="affiliationButtonText">
+                Affiliation Button Text
+              </label>
+              <input
+                type="text"
+                value={data.affiliationButtonText}
+                onChange={(e) =>
+                  setData({ ...data, affiliationButtonText: e.target.value })
+                }
+                className="w-full px-4 py-2 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-all"
+              />
+            </div>
+
+            <button
+              onClick={() => {
+                // update the coach document with the new affiliation link and button text
+                const coachRef = doc(
+                  collection(db, DB_URL.coaches),
+                  auth.currentUser?.uid
+                );
+                updateDoc(coachRef, {
+                  affiliationLink: data.affiliationLink,
+                  affiliationButtonText: data.affiliationButtonText,
+                });
+              }}
+              className="px-4 py-4 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-all"
+            >
+              Update
+            </button>
           </div>
         </div>
       </div>

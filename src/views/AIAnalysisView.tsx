@@ -1,5 +1,6 @@
+import { collection, getDocs, query, where } from "firebase/firestore";
 import { jsPDF } from "jspdf";
-import { ArrowLeft, Brain, Send, Sparkles } from "lucide-react";
+import { ArrowLeft, Brain, Pencil, Send, Sparkles } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -9,8 +10,10 @@ import { ResultsGraph } from "../components/ResultsGraph";
 import { useAssessment } from "../contexts/AssessmentContext";
 import { useResults } from "../contexts/ResultsContext";
 import { checkCoachAIAccess } from "../lib/auth";
-import { auth } from "../lib/firebase";
+import { auth, db } from "../lib/firebase";
 import { getAIAnalysis } from "../services/analysis";
+import { Coach } from "../types/auth";
+import { DB_URL } from "../utils/functions";
 
 interface Message {
   id: string;
@@ -88,6 +91,10 @@ export function AIAnalysisView() {
   const [error, setError] = useState<string | null>(null);
   const [hasAccess, setHasAccess] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatHistoryRef = useRef<HTMLDivElement>(null);
+  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
+
+  const [currentCoach, setCurrentCoach] = useState<Coach | null>(null);
 
   const exportChatHistory = () => {
     const pdf = new jsPDF();
@@ -213,6 +220,30 @@ export function AIAnalysisView() {
     }
   };
 
+  const printChatHistory = () => {
+    const printWindow = window.open("", "_blank", "height=400,width=600");
+    printWindow?.document.write(
+      `<html><head><title>Chat History</title></head><body>
+      <h1>Chat History</h1>
+      ${messages
+        .map(
+          (message) =>
+            `<p><strong>${message.sender.toUpperCase()}:</strong> ${
+              message.content
+            }</p>`
+        )
+        .join("")}
+      </body></html>`
+    );
+    printWindow?.document.close();
+    printWindow?.focus(); // Ensure the new window gets focus
+    printWindow?.print(); // Trigger the print dialog
+  };
+
+  useEffect(() => {
+    console.log("currentCoach", currentCoach);
+  }, [currentCoach]);
+
   useEffect(() => {
     const loadResults = async () => {
       if (!auth.currentUser) {
@@ -226,6 +257,20 @@ export function AIAnalysisView() {
         // If accessing as coach, verify permissions
         if (targetUserId !== auth.currentUser.uid) {
           const hasAccess = await checkCoachAIAccess(auth.currentUser.uid);
+
+          const coachQuery = query(
+            collection(db, DB_URL.coaches),
+            where("userId", "==", auth.currentUser.uid)
+          );
+          const coachSnapshot = await getDocs(coachQuery);
+
+          if (coachSnapshot.docs.length > 0) {
+            const coach = coachSnapshot.docs.map((doc) =>
+              doc.data()
+            )[0] as Coach;
+            setCurrentCoach(coach);
+          }
+
           setHasAccess(hasAccess);
           if (!hasAccess) {
             setError("You do not have access to AI analysis");
@@ -427,7 +472,10 @@ export function AIAnalysisView() {
 
         {/* Chat Interface */}
         <div className="glass-effect rounded-3xl p-6 mb-6">
-          <div className="h-[500px] overflow-y-auto custom-scrollbar mb-4">
+          <div
+            ref={chatHistoryRef}
+            className="h-[500px] overflow-y-auto custom-scrollbar mb-4"
+          >
             {messages.map((message) => (
               <div
                 key={message.id}
@@ -435,51 +483,67 @@ export function AIAnalysisView() {
                   message.sender === "user" ? "text-right" : "text-left"
                 }`}
               >
-                <div
-                  className={`inline-block max-w-[80%] px-6 py-3 rounded-2xl ${
-                    message.sender === "user"
-                      ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white"
-                      : "bg-white/10 text-white"
-                  }`}
-                >
-                  {message.sender === "user" ? (
-                    message.content
-                  ) : (
-                    <ReactMarkdown
-                      components={{
-                        h1: ({ children }) => (
-                          <h1 className="text-xl font-bold mb-3">{children}</h1>
-                        ),
-                        h2: ({ children }) => (
-                          <h2 className="text-lg font-bold mb-2">{children}</h2>
-                        ),
-                        h3: ({ children }) => (
-                          <h3 className="text-base font-bold mb-2">
-                            {children}
-                          </h3>
-                        ),
-                        p: ({ children }) => (
-                          <p className="mb-4 last:mb-0">{children}</p>
-                        ),
-                        strong: ({ children }) => (
-                          <strong className="font-bold text-white">
-                            {children}
-                          </strong>
-                        ),
-                        ul: ({ children }) => (
-                          <ul className="list-disc ml-6 mb-4">{children}</ul>
-                        ),
-                        ol: ({ children }) => (
-                          <ol className="list-decimal ml-6 mb-4">{children}</ol>
-                        ),
-                        li: ({ children }) => (
-                          <li className="mb-1">{children}</li>
-                        ),
-                      }}
+                <div className="relative">
+                  {message.sender === "user" && (
+                    <button
+                      className="absolute -top-2 -right-2 p-1 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+                      onClick={() => setEditingMessage(message)}
                     >
-                      {message.content}
-                    </ReactMarkdown>
+                      <Pencil className="w-3 h-3 text-white" />
+                    </button>
                   )}
+                  <div
+                    className={`inline-block max-w-[80%] px-6 py-3 rounded-2xl ${
+                      message.sender === "user"
+                        ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white"
+                        : "bg-white/10 text-white"
+                    }`}
+                  >
+                    {message.sender === "user" ? (
+                      message.content
+                    ) : (
+                      <ReactMarkdown
+                        components={{
+                          h1: ({ children }) => (
+                            <h1 className="text-xl font-bold mb-3">
+                              {children}
+                            </h1>
+                          ),
+                          h2: ({ children }) => (
+                            <h2 className="text-lg font-bold mb-2">
+                              {children}
+                            </h2>
+                          ),
+                          h3: ({ children }) => (
+                            <h3 className="text-base font-bold mb-2">
+                              {children}
+                            </h3>
+                          ),
+                          p: ({ children }) => (
+                            <p className="mb-4 last:mb-0">{children}</p>
+                          ),
+                          strong: ({ children }) => (
+                            <strong className="font-bold text-white">
+                              {children}
+                            </strong>
+                          ),
+                          ul: ({ children }) => (
+                            <ul className="list-disc ml-6 mb-4">{children}</ul>
+                          ),
+                          ol: ({ children }) => (
+                            <ol className="list-decimal ml-6 mb-4">
+                              {children}
+                            </ol>
+                          ),
+                          li: ({ children }) => (
+                            <li className="mb-1">{children}</li>
+                          ),
+                        }}
+                      >
+                        {message.content}
+                      </ReactMarkdown>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
@@ -533,6 +597,15 @@ export function AIAnalysisView() {
             >
               Copy Chat History
             </button>
+
+            {/* print chat history */}
+            <button
+              onClick={() => printChatHistory()}
+              className="px-4 py-3 rounded-xl bg-white/10 text-white hover:bg-white/20 
+                  transition-all disabled:opacity-50 text-sm"
+            >
+              Print Chat History
+            </button>
           </div>
         </div>
 
@@ -552,6 +625,18 @@ export function AIAnalysisView() {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* a green to dark green gradient button */}
+        <div className="glass-effect rounded-3xl p-6 flex justify-center my-6">
+          <button
+            onClick={() => {
+              window.open(currentCoach?.affiliationLink);
+            }}
+            className="px-32 py-5 rounded-xl bg-gradient-to-r from-green-500 to-green-700 text-white hover:bg-green-700 transition-all disabled:opacity-50 text-sm max-w-full font-bold"
+          >
+            {currentCoach?.affiliationButtonText || "Get Personalized Report"}
+          </button>
         </div>
       </div>
     </div>

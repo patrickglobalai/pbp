@@ -92,7 +92,7 @@ export function AIAnalysisView() {
   const [hasAccess, setHasAccess] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatHistoryRef = useRef<HTMLDivElement>(null);
-  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
+  const [editingMessage, setEditingMessage] = useState<number | null>(null);
 
   const [currentCoach, setCurrentCoach] = useState<Coach | null>(null);
 
@@ -222,22 +222,24 @@ export function AIAnalysisView() {
 
   const printChatHistory = () => {
     const printWindow = window.open("", "_blank", "height=400,width=600");
+    const html = chatHistoryRef.current?.innerHTML;
     printWindow?.document.write(
-      `<html><head><title>Chat History</title></head><body>
-      <h1>Chat History</h1>
-      ${messages
-        .map(
-          (message) =>
-            `<p><strong>${message.sender.toUpperCase()}:</strong> ${
-              message.content
-            }</p>`
-        )
-        .join("")}
+      `<html><head>    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+      <style>
+        body {
+          background: linear-gradient(-45deg, #0ea5e9, #6366f1, #8b5cf6, #0ea5e9);
+          background-size: 400% 400%;
+          animation: gradientBG 15s ease infinite;
+        }
+      </style>
+<title>Chat History</title></head><body class="p-4">
+      <h1 class="text-2xl font-bold text-white mb-4">Chat History</h1>
+        ${html}
       </body></html>`
     );
     printWindow?.document.close();
     printWindow?.focus(); // Ensure the new window gets focus
-    printWindow?.print(); // Trigger the print dialog
+    chatHistoryRef?.current?.print(); // Trigger the print dialog
   };
 
   useEffect(() => {
@@ -471,82 +473,117 @@ export function AIAnalysisView() {
         </div>
 
         {/* Chat Interface */}
-        <div className="glass-effect rounded-3xl p-6 mb-6">
+        <div
+          className="glass-effect rounded-3xl p-6 mb-6"
+          onClick={(e) => {
+            const buttonOrInput = (e.target as HTMLElement).closest(
+              "button, input"
+            );
+
+            if (!buttonOrInput) {
+              setEditingMessage(null);
+            }
+          }}
+        >
           <div
             ref={chatHistoryRef}
             className="h-[500px] overflow-y-auto custom-scrollbar mb-4"
           >
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`mb-4 ${
-                  message.sender === "user" ? "text-right" : "text-left"
-                }`}
-              >
-                <div className="relative">
-                  {message.sender === "user" && (
-                    <button
-                      className="absolute -top-2 -right-2 p-1 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
-                      onClick={() => setEditingMessage(message)}
+            {messages.map((message, index) =>
+              editingMessage === index ? (
+                <div>
+                  <input
+                    key={message.id}
+                    type="text"
+                    value={message.content}
+                    className="w-full px-4 py-2 rounded-xl bg-white/10 text-white border border-white/20 
+                focus:border-white/40 focus:outline-none"
+                    onChange={(e) =>
+                      setMessages((prev) =>
+                        prev.map((m, i) =>
+                          i === index ? { ...m, content: e.target.value } : m
+                        )
+                      )
+                    }
+                  />
+                </div>
+              ) : (
+                <div
+                  key={message.id}
+                  className={`mb-4 ${
+                    message.sender === "user" ? "text-right" : "text-left"
+                  }`}
+                >
+                  <div className="relative">
+                    <div
+                      className={`inline-block max-w-[80%] px-6 py-3 rounded-2xl relative ${
+                        message.sender === "user"
+                          ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white"
+                          : "bg-white/10 text-white"
+                      }`}
                     >
-                      <Pencil className="w-3 h-3 text-white" />
-                    </button>
-                  )}
-                  <div
-                    className={`inline-block max-w-[80%] px-6 py-3 rounded-2xl ${
-                      message.sender === "user"
-                        ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white"
-                        : "bg-white/10 text-white"
-                    }`}
-                  >
-                    {message.sender === "user" ? (
-                      message.content
-                    ) : (
-                      <ReactMarkdown
-                        components={{
-                          h1: ({ children }) => (
-                            <h1 className="text-xl font-bold mb-3">
-                              {children}
-                            </h1>
-                          ),
-                          h2: ({ children }) => (
-                            <h2 className="text-lg font-bold mb-2">
-                              {children}
-                            </h2>
-                          ),
-                          h3: ({ children }) => (
-                            <h3 className="text-base font-bold mb-2">
-                              {children}
-                            </h3>
-                          ),
-                          p: ({ children }) => (
-                            <p className="mb-4 last:mb-0">{children}</p>
-                          ),
-                          strong: ({ children }) => (
-                            <strong className="font-bold text-white">
-                              {children}
-                            </strong>
-                          ),
-                          ul: ({ children }) => (
-                            <ul className="list-disc ml-6 mb-4">{children}</ul>
-                          ),
-                          ol: ({ children }) => (
-                            <ol className="list-decimal ml-6 mb-4">
-                              {children}
-                            </ol>
-                          ),
-                          li: ({ children }) => (
-                            <li className="mb-1">{children}</li>
-                          ),
-                        }}
+                      <button
+                        id={`message-${message.id}`}
+                        className={`absolute p-1 rounded-full bg-white/10 hover:bg-white/20 transition-colors ${
+                          message.sender === "user"
+                            ? "-bottom-2 -left-2"
+                            : "-bottom-2 -right-2"
+                        }`}
+                        onClick={() => setEditingMessage(index)}
                       >
-                        {message.content}
-                      </ReactMarkdown>
-                    )}
+                        <Pencil className="w-3 h-3 text-white" />
+                      </button>
+                      {message.sender === "user" ? (
+                        message.content
+                      ) : (
+                        <ReactMarkdown
+                          components={{
+                            h1: ({ children }) => (
+                              <h1 className="text-xl font-bold mb-3">
+                                {children}
+                              </h1>
+                            ),
+                            h2: ({ children }) => (
+                              <h2 className="text-lg font-bold mb-2">
+                                {children}
+                              </h2>
+                            ),
+                            h3: ({ children }) => (
+                              <h3 className="text-base font-bold mb-2">
+                                {children}
+                              </h3>
+                            ),
+                            p: ({ children }) => (
+                              <p className="mb-4 last:mb-0">{children}</p>
+                            ),
+                            strong: ({ children }) => (
+                              <strong className="font-bold text-white">
+                                {children}
+                              </strong>
+                            ),
+                            ul: ({ children }) => (
+                              <ul className="list-disc ml-6 mb-4">
+                                {children}
+                              </ul>
+                            ),
+                            ol: ({ children }) => (
+                              <ol className="list-decimal ml-6 mb-4">
+                                {children}
+                              </ol>
+                            ),
+                            li: ({ children }) => (
+                              <li className="mb-1">{children}</li>
+                            ),
+                          }}
+                        >
+                          {message.content}
+                        </ReactMarkdown>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            )}
             {isLoading && (
               <div className="text-white/60">
                 Human Insights AI is analyzing...
@@ -629,14 +666,18 @@ export function AIAnalysisView() {
 
         {/* a green to dark green gradient button */}
         <div className="glass-effect rounded-3xl p-6 flex justify-center my-6">
-          <button
-            onClick={() => {
-              window.open(currentCoach?.affiliationLink);
-            }}
+          <a
+            href={
+              currentCoach?.affiliationLink?.startsWith("http")
+                ? currentCoach?.affiliationLink
+                : "https://" + currentCoach?.affiliationLink
+            }
+            target="_blank"
+            rel="noopener noreferrer"
             className="px-32 py-5 rounded-xl bg-gradient-to-r from-green-500 to-green-700 text-white hover:bg-green-700 transition-all disabled:opacity-50 text-sm max-w-full font-bold"
           >
             {currentCoach?.affiliationButtonText || "Get Personalized Report"}
-          </button>
+          </a>
         </div>
       </div>
     </div>

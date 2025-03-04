@@ -135,9 +135,15 @@ export function AIAnalysisView() {
         if (part.startsWith("<")) {
           const tag = part.toLowerCase();
           if (tag === "<hr>") {
-            // Draw a horizontal line with black color
+            // Draw the horizontal line first, behind the bubble
             pdf.setDrawColor(0, 0, 0);
-            pdf.line(margin, currentY, pageWidth - margin, currentY);
+            const lineY = currentY + 2; // Adjust line position to be slightly below
+            pdf.line(
+              margin + 5, // Start inside the bubble
+              lineY,
+              pageWidth - margin - 5, // End inside the bubble
+              lineY
+            );
             currentY += lineHeight / 2;
             lines.push({ text: "", y: currentY, indent: false });
           } else if (tag === "<br>") {
@@ -302,9 +308,37 @@ export function AIAnalysisView() {
   };
 
   const printChatHistory = () => {
-    (chatHistoryRef?.current as unknown as any)?.print(); // Trigger the print dialog
+    const printWindow = window.open("", "_blank", "height=400,width=600");
+    const html = chatHistoryRef.current?.innerHTML;
+    printWindow?.document.write(
+      `<html><head>    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+      <style>
+        body {
+          background: linear-gradient(-45deg, #0ea5e9, #6366f1, #8b5cf6, #0ea5e9);
+          background-size: 400% 400%;
+          animation: gradientBG 15s ease infinite;
+        }
+        .chat-history {
+          background-color: rgba(255, 255, 255, 0.1);
+          border-radius: 10px;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          backdrop-filter: blur(10px);
+          padding: 20px;
+        }
+      </style>
+    </head>
+    <body class="p-4">
+    <h1 class="text-3xl font-bold text-white mb-1">
+    Chat History
+    </h1>
+    <div class="chat-history p-4">
+    ${html}
+    </div>
+    </body></html>`
+    );
+    printWindow?.document.close();
+    printWindow?.print();
   };
-
   useEffect(() => {
     console.log("currentCoach", currentCoach);
   }, [currentCoach]);

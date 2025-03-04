@@ -101,7 +101,7 @@ export function AIAnalysisView() {
 
     // Set initial position and styling
     let yPosition = 20;
-    const lineHeight = 10;
+    const lineHeight = 7;
     const margin = 10;
     const pageHeight = pdf.internal.pageSize.height;
     const pageWidth = pdf.internal.pageSize.width;
@@ -119,6 +119,13 @@ export function AIAnalysisView() {
       // Format HTML tags
       let content = message.content;
       const lines = [];
+      let currentLine = {
+        text: "",
+        style: "normal",
+        color: 0,
+        indent: false,
+        xOffset: 0,
+      };
 
       // Split content by HTML tags and process each part
       const parts = content.split(/(<[^>]*>)/);
@@ -128,39 +135,61 @@ export function AIAnalysisView() {
         if (part.startsWith("<")) {
           const tag = part.toLowerCase();
           if (tag === "<hr>") {
-            // Draw a horizontal line
-            pdf.setDrawColor(200, 200, 200);
+            // Draw a horizontal line with black color
+            pdf.setDrawColor(0, 0, 0);
             pdf.line(margin, currentY, pageWidth - margin, currentY);
-            currentY += lineHeight;
+            currentY += lineHeight / 2;
+            lines.push({ text: "", y: currentY, indent: false });
           } else if (tag === "<br>") {
-            // Add line break
-            currentY += lineHeight;
-          } else if (tag === "<li>") {
-            // Add bullet point
-            pdf.circle(margin + 2, currentY + 2, 1, "F");
-            lines.push({ text: "", y: currentY, indent: true });
+            // Add line break with reduced spacing
+            currentY += lineHeight / 2;
+            lines.push({ text: "", y: currentY, xOffset: 10, indent: false });
+          } else if (tag === "<li" || tag === "<ul" || tag === "<ol") {
+            // Add bullet point without extra spacing
+            lines.push({ text: "•", y: currentY, xOffset: 10, indent: true });
+          } else if (tag === "<b>" || tag === "<strong>") {
+            currentLine.style = "bold";
+          } else if (tag === "</b>" || tag === "</strong>") {
+            currentLine.style = "normal";
+          } else if (tag === "<i>" || tag === "<em>") {
+            currentLine.style = "italic";
+          } else if (tag === "</i>" || tag === "</em>") {
+            currentLine.style = "normal";
+          } else if (tag === "<u>") {
+            currentLine.color = 0x0000ff;
+          } else if (tag === "</u>") {
+            currentLine.color = 0;
+          } else if (tag === "<a") {
+            currentLine.color = 0x0000ff;
+          } else if (tag === "</a>") {
+            currentLine.color = 0;
           }
+          // Don't add new lines for formatting tags
         } else if (part.trim()) {
+          // Apply current styling to the text
+          pdf.setFont("helvetica", currentLine.style);
+          pdf.setTextColor(currentLine.color);
+
           // Split text to fit page width, considering indentation for list items
-          const maxTextWidth =
-            lines.length > 0 && lines[lines.length - 1].indent
-              ? maxWidth - 10
-              : maxWidth;
+          const maxTextWidth = currentLine.indent ? maxWidth - 10 : maxWidth;
           const textLines = pdf.splitTextToSize(part, maxTextWidth);
 
           textLines.forEach((line) => {
             lines.push({
               text: line,
               y: currentY,
-              indent: lines.length > 0 && lines[lines.length - 1].indent,
+              indent: currentLine.indent,
+              xOffset: currentLine.xOffset,
+              style: currentLine.style,
+              color: currentLine.color,
             });
             currentY += lineHeight;
           });
         }
       });
 
-      // Calculate total height needed
-      const messageHeight = (lines.length + 1) * lineHeight + 15;
+      // Calculate total height with reduced spacing for tags
+      const messageHeight = lines.length * lineHeight + 20;
 
       // Check if we need a new page
       if (yPosition + messageHeight > pageHeight - margin) {
@@ -201,9 +230,13 @@ export function AIAnalysisView() {
 
         // Add message text
         lines.forEach((line) => {
-          const xPos =
-            pageWidth - margin - bubbleWidth + 5 + (line.indent ? 10 : 0);
-          pdf.text(line.text, xPos, line.y + 15);
+          if (line.text) {
+            pdf.setFont("helvetica", line.style);
+            pdf.setTextColor(message.sender === "user" ? 255 : 0);
+            const xPos =
+              pageWidth - margin - bubbleWidth + 5 + (line.indent ? 10 : 0);
+            pdf.text(line.text, xPos, line.y + 14);
+          }
         });
       } else {
         // AI messages on the left
@@ -223,7 +256,7 @@ export function AIAnalysisView() {
           margin,
           yPosition - 5,
           bubbleWidth,
-          messageHeight - 5,
+          messageHeight,
           5,
           5,
           "F"
@@ -237,12 +270,16 @@ export function AIAnalysisView() {
 
         // Add message text
         lines.forEach((line) => {
-          const xPos = margin + 5 + (line.indent ? 10 : 0);
-          pdf.text(line.text, xPos, line.y + 15);
+          if (line.text) {
+            pdf.setFont("helvetica", line.style);
+            pdf.setTextColor(line.color);
+            const xPos = margin + 5 + (line.indent ? 10 : 0);
+            pdf.text(line.text, xPos, line.y + 14);
+          }
         });
       }
 
-      yPosition += messageHeight + lineHeight;
+      yPosition += messageHeight + lineHeight / 2;
     });
 
     // Save the PDF
@@ -265,33 +302,7 @@ export function AIAnalysisView() {
   };
 
   const printChatHistory = () => {
-    const printWindow = window.open("", "_blank", "height=400,width=600");
-    const html = chatHistoryRef.current?.innerHTML;
-    printWindow?.document.write(
-      `<html><head>    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
-      <style>
-        body {
-          background: linear-gradient(-45deg, #0ea5e9, #6366f1, #8b5cf6, #0ea5e9);
-          background-size: 400% 400%;
-          animation: gradientBG 15s ease infinite;
-        }
-        .chat-history {
-          background-color: rgba(255, 255, 255, 0.1);
-          backdrop-filter: blur(10px);
-          padding: 20px;
-          border-radius: 10px;
-        }
-      </style>
-<title>Chat History</title></head><body class="p-4">
-      <h1 class="text-2xl font-bold text-white mb-4">Chat History</h1>
-      <div class="chat-history">
-      ${html}
-      </div>
-      </body></html>`
-    );
-    printWindow?.document.close();
-    printWindow?.focus(); // Ensure the new window gets focus
-    chatHistoryRef?.current?.print(); // Trigger the print dialog
+    (chatHistoryRef?.current as unknown as any)?.print(); // Trigger the print dialog
   };
 
   useEffect(() => {

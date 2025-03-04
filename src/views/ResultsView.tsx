@@ -1,15 +1,14 @@
-import { collection, getDocs, query, where } from "firebase/firestore";
 import { motion } from "framer-motion";
 import { AlertCircle, Brain, Save } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { HarmonicGraph } from "../components/HarmonicGraph";
 import { Header } from "../components/Header";
 import { ResultsGraph } from "../components/ResultsGraph";
 import { useAssessment } from "../contexts/AssessmentContext";
-import { useResults } from "../hooks/useResults";
-import { auth, db } from "../lib/firebase";
 import { useAuth } from "../contexts/AuthContext";
+import { useResults } from "../hooks/useResults";
+import { auth } from "../lib/firebase";
 
 export function ResultsView() {
   const { scores, harmonicScores } = useAssessment();
@@ -26,6 +25,7 @@ export function ResultsView() {
         scores: scores!,
         harmonicScores: harmonicScores!,
         completedAt: new Date(),
+        version: 1.0,
       });
       setIsSaved(true);
     } catch (err) {

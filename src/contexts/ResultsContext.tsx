@@ -160,6 +160,7 @@ export function ResultsProvider({ children }: { children: React.ReactNode }) {
         getResults,
         isLoading,
         error,
+        results: [],
       }}
     >
       {children}

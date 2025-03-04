@@ -282,7 +282,7 @@ export function AIAnalysisView() {
         }
 
         if (!scores || !harmonicScores) {
-          const results = await getResults(targetUserId, auth.currentUser.uid);
+          const results = await getResults(targetUserId);
           if (results) {
             setScores(results.scores);
             setHarmonicScores(results.harmonicScores);

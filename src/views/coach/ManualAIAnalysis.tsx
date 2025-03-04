@@ -1,40 +1,83 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Link, useNavigate } from 'react-router-dom';
-import { Brain, ArrowLeft, AlertCircle, Send } from 'lucide-react';
-import { getAIAnalysis } from '../../services/analysis';
-import ReactMarkdown from 'react-markdown';
-import { characteristics } from '../../data/characteristics';
-import { harmonicLevels } from '../../data/harmonicLevels';
-import { auth } from '../../lib/firebase';
-import { checkCoachAIAccess } from '../../lib/auth';
+import { AlertCircle, ArrowLeft, Brain, Send } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import { Link, useNavigate } from "react-router-dom";
+import { characteristics } from "../../data/characteristics";
+import { harmonicLevels } from "../../data/harmonicLevels";
+import { checkCoachAIAccess } from "../../lib/auth";
+import { auth } from "../../lib/firebase";
+import { getAIAnalysis } from "../../services/analysis";
 
 const analysisButtons = [
-  { id: 'intro', label: 'Intro to Report', query: 'Summarize my assessment results, highlighting key insights and themes. Provide a clear overview of my traits, Harmonic Scale position, and areas for personal and professional growth.' },
-  { id: 'traits', label: 'Trait Insights', query: 'Analyze all 12 traits in the Being, Doing, and Having categories. Provide insights into each trait, highlighting my scores, how they reflect my current behaviors, and their impact on my daily actions. Identify the most notable traits in each category (high-performing or requiring attention) and explain their role in shaping my personal and professional dynamics.' },
-  { id: 'harmonic', label: 'Harmonic Scale', query: 'Explain my position on the Harmonic Scale. How does my emotional expression influence my traits and behaviors? Provide examples of how this interaction impacts my decision-making, relationships, and daily actions' },
-  { id: 'strengths', label: 'Key Strengths', query: 'Identify my strongest traits and explain how I can use them to overcome challenges and achieve success. Offer examples of how these strengths can be applied in both personal and professional settings.' },
-  { id: 'breakthrough', label: 'Breakthrough Insights', query: 'Break down my Critical, Development, and Growth Zones. Highlight which traits need immediate focus, which ones have potential for steady improvement, and which traits can be leveraged for maximum success.' },
-  { id: 'professional', label: 'Professional Insights', query: 'Analyze how my traits manifest in professional contexts, including leadership, teamwork, communication, adaptability, and problem-solving. Provide actionable strategies to enhance my effectiveness in the workplace.' },
-  { id: 'relationships', label: 'Relationship Insights', query: 'Provide insights into how my traits and Harmonic Scale position influence my relationships. Offer strategies to improve communication, build trust, and strengthen personal and professional connections.' },
-  { id: 'recommendations', label: 'Action Steps', query: 'Based on my assessment, provide clear and specific action steps I can take to improve my traits, elevate my Harmonic Scale position, and achieve my personal and professional goals. Include both short-term and long-term recommendations.' },
+  {
+    id: "intro",
+    label: "Intro to Report",
+    query:
+      "Summarize my assessment results, highlighting key insights and themes. Provide a clear overview of my traits, Harmonic Scale position, and areas for personal and professional growth.",
+  },
+  {
+    id: "traits",
+    label: "Trait Insights",
+    query:
+      "Analyze all 12 traits in the Being, Doing, and Having categories. Provide insights into each trait, highlighting my scores, how they reflect my current behaviors, and their impact on my daily actions. Identify the most notable traits in each category (high-performing or requiring attention) and explain their role in shaping my personal and professional dynamics.",
+  },
+  {
+    id: "harmonic",
+    label: "Harmonic Scale",
+    query:
+      "Explain my position on the Harmonic Scale. How does my emotional expression influence my traits and behaviors? Provide examples of how this interaction impacts my decision-making, relationships, and daily actions",
+  },
+  {
+    id: "strengths",
+    label: "Key Strengths",
+    query:
+      "Identify my strongest traits and explain how I can use them to overcome challenges and achieve success. Offer examples of how these strengths can be applied in both personal and professional settings.",
+  },
+  {
+    id: "breakthrough",
+    label: "Breakthrough Insights",
+    query:
+      "Break down my Critical, Development, and Growth Zones. Highlight which traits need immediate focus, which ones have potential for steady improvement, and which traits can be leveraged for maximum success.",
+  },
+  {
+    id: "professional",
+    label: "Professional Insights",
+    query:
+      "Analyze how my traits manifest in professional contexts, including leadership, teamwork, communication, adaptability, and problem-solving. Provide actionable strategies to enhance my effectiveness in the workplace.",
+  },
+  {
+    id: "relationships",
+    label: "Relationship Insights",
+    query:
+      "Provide insights into how my traits and Harmonic Scale position influence my relationships. Offer strategies to improve communication, build trust, and strengthen personal and professional connections.",
+  },
+  {
+    id: "recommendations",
+    label: "Action Steps",
+    query:
+      "Based on my assessment, provide clear and specific action steps I can take to improve my traits, elevate my Harmonic Scale position, and achieve my personal and professional goals. Include both short-term and long-term recommendations.",
+  },
 ];
 
 export function ManualAIAnalysis() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [hasAccess, setHasAccess] = useState(false);
   const [isCheckingAccess, setIsCheckingAccess] = useState(true);
-  const [messages, setMessages] = useState<Array<{id: string; content: string; sender: 'user' | 'ai'}>>([]);
+  const [messages, setMessages] = useState<
+    Array<{ id: string; content: string; sender: "user" | "ai" }>
+  >([]);
   const [scores, setScores] = useState<Record<string, number>>({});
-  const [harmonicScores, setHarmonicScores] = useState<Record<string, number>>({});
-  const [inputMessage, setInputMessage] = useState('');
+  const [harmonicScores, setHarmonicScores] = useState<Record<string, number>>(
+    {}
+  );
+  const [inputMessage, setInputMessage] = useState("");
 
   useEffect(() => {
     const checkAccess = async () => {
       if (!auth.currentUser) {
-        navigate('/login');
+        navigate("/login");
         return;
       }
 
@@ -42,11 +85,11 @@ export function ManualAIAnalysis() {
         const aiAccess = await checkCoachAIAccess(auth.currentUser.uid);
         setHasAccess(aiAccess);
         if (!aiAccess) {
-          setError('You do not have access to AI analysis features');
+          setError("You do not have access to AI analysis features");
         }
       } catch (err) {
-        console.error('Error checking access:', err);
-        setError('Failed to verify access permissions');
+        console.error("Error checking access:", err);
+        setError("Failed to verify access permissions");
       } finally {
         setIsCheckingAccess(false);
       }
@@ -57,22 +100,28 @@ export function ManualAIAnalysis() {
 
   const formatDataForAI = (prompt: string) => {
     // Format characteristic scores
-    const characteristicDetails = characteristics.map(char => {
-      const score = scores[char.id] || 0;
-      return `${char.name}: ${score}%`;
-    }).join('\n');
+    const characteristicDetails = characteristics
+      .map((char) => {
+        const score = scores[char.id] || 0;
+        return `${char.name}: ${score}%`;
+      })
+      .join("\n");
 
     // Get dominant harmonic level
     const harmonicEntries = Object.entries(harmonicScores);
-    const dominantHarmonic = harmonicEntries.reduce((prev, curr) => 
-      (curr[1] > prev[1] ? curr : prev), harmonicEntries[0]);
-    const dominantLevel = harmonicLevels.find(level => level.id === parseInt(dominantHarmonic[0]));
+    const dominantHarmonic = harmonicEntries.reduce(
+      (prev, curr) => (curr[1] > prev[1] ? curr : prev),
+      harmonicEntries[0]
+    );
+    const dominantLevel = harmonicLevels.find(
+      (level) => level.id === parseInt(dominantHarmonic[0])
+    );
 
     // Format all harmonic scores
     const harmonicDetails = harmonicLevels
       .sort((a, b) => (harmonicScores[b.id] || 0) - (harmonicScores[a.id] || 0))
-      .map(level => `${level.name}: ${harmonicScores[level.id] || 0}%`)
-      .join('\n');
+      .map((level) => `${level.name}: ${harmonicScores[level.id] || 0}%`)
+      .join("\n");
 
     return `
 Assessment Results:
@@ -90,12 +139,16 @@ Based on these results, ${prompt}
 `;
   };
 
-  const handleScoreChange = (id: string, value: string, isHarmonic: boolean = false) => {
+  const handleScoreChange = (
+    id: string,
+    value: string,
+    isHarmonic: boolean = false
+  ) => {
     const numValue = Math.min(100, Math.max(0, Number(value) || 0));
     if (isHarmonic) {
-      setHarmonicScores(prev => ({ ...prev, [id]: numValue }));
+      setHarmonicScores((prev) => ({ ...prev, [id]: numValue }));
     } else {
-      setScores(prev => ({ ...prev, [id]: numValue }));
+      setScores((prev) => ({ ...prev, [id]: numValue }));
     }
   };
 
@@ -103,7 +156,7 @@ Based on these results, ${prompt}
     e.preventDefault();
     if (!inputMessage.trim() || isLoading) return;
     await handleAnalyze(inputMessage);
-    setInputMessage('');
+    setInputMessage("");
   };
 
   const handleAnalyze = async (prompt: string) => {
@@ -111,27 +164,27 @@ Based on these results, ${prompt}
 
     try {
       setIsLoading(true);
-      setError('');
-      
+      setError("");
+
       const userMessage = {
         id: Date.now().toString(),
         content: prompt,
-        sender: 'user' as const
+        sender: "user" as const,
       };
-      setMessages(prev => [...prev, userMessage]);
+      setMessages((prev) => [...prev, userMessage]);
 
       const formattedPrompt = formatDataForAI(prompt);
       const response = await getAIAnalysis(formattedPrompt);
-      
+
       const aiMessage = {
         id: (Date.now() + 1).toString(),
         content: response,
-        sender: 'ai' as const
+        sender: "ai" as const,
       };
-      setMessages(prev => [...prev, aiMessage]);
+      setMessages((prev) => [...prev, aiMessage]);
     } catch (err) {
-      console.error('Error getting AI analysis:', err);
-      setError('Failed to get AI analysis. Please try again.');
+      console.error("Error getting AI analysis:", err);
+      setError("Failed to get AI analysis. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -152,8 +205,12 @@ Based on these results, ${prompt}
       <div className="min-h-screen ai-gradient-bg py-12 px-4">
         <div className="max-w-7xl mx-auto text-center">
           <div className="text-center">
-            <h1 className="text-3xl font-bold text-white mb-1">Access Denied</h1>
-            <p className="text-white/80 mb-4">You do not have access to AI analysis features</p>
+            <h1 className="text-3xl font-bold text-white mb-1">
+              Access Denied
+            </h1>
+            <p className="text-white/80 mb-4">
+              You do not have access to AI analysis features
+            </p>
             <Link
               to="/coach"
               className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-medium hover:scale-105 transition-all"
@@ -169,8 +226,8 @@ Based on these results, ${prompt}
   return (
     <div className="min-h-screen ai-gradient-bg py-12 px-4">
       <div className="max-w-7xl mx-auto">
-        <Link 
-          to="/coach" 
+        <Link
+          to="/coach"
           className="inline-flex items-center gap-2 text-white/80 hover:text-white mb-8 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
@@ -180,8 +237,12 @@ Based on these results, ${prompt}
         <div className="flex items-center gap-4 mb-8">
           <Brain className="w-12 h-12 text-white" />
           <div>
-            <h1 className="text-3xl font-bold text-white">Manual AI Analysis</h1>
-            <p className="text-white/80">Enter scores manually to get AI analysis</p>
+            <h1 className="text-3xl font-bold text-white">
+              Manual AI Analysis
+            </h1>
+            <p className="text-white/80">
+              Enter scores manually to get AI analysis
+            </p>
           </div>
         </div>
 
@@ -194,16 +255,18 @@ Based on these results, ${prompt}
 
         <div className="grid md:grid-cols-2 gap-8 mb-8">
           <div className="glass-effect rounded-3xl p-8">
-            <h2 className="text-2xl font-bold text-white mb-6">Characteristic Scores</h2>
+            <h2 className="text-2xl font-bold text-white mb-6">
+              Characteristic Scores
+            </h2>
             <div className="grid gap-4">
-              {characteristics.map(char => (
+              {characteristics.map((char) => (
                 <div key={char.id} className="flex items-center gap-4">
                   <label className="text-white w-32">{char.name}</label>
                   <input
                     type="number"
                     min="0"
                     max="100"
-                    value={scores[char.id] || ''}
+                    value={scores[char.id] || ""}
                     onChange={(e) => handleScoreChange(char.id, e.target.value)}
                     className="w-24 px-4 py-2 rounded-xl bg-white/10 text-white border border-white/20 
                       focus:border-white/40 focus:outline-none"
@@ -215,17 +278,25 @@ Based on these results, ${prompt}
           </div>
 
           <div className="glass-effect rounded-3xl p-8">
-            <h2 className="text-2xl font-bold text-white mb-6">Harmonic Scores</h2>
+            <h2 className="text-2xl font-bold text-white mb-6">
+              Harmonic Scores
+            </h2>
             <div className="grid gap-4">
-              {harmonicLevels.map(level => (
+              {harmonicLevels.map((level) => (
                 <div key={level.id} className="flex items-center gap-4">
                   <label className="text-white w-32">{level.name}</label>
                   <input
                     type="number"
                     min="0"
                     max="100"
-                    value={harmonicScores[level.id] || ''}
-                    onChange={(e) => handleScoreChange(level.id, e.target.value, true)}
+                    value={harmonicScores[level.id] || ""}
+                    onChange={(e) =>
+                      handleScoreChange(
+                        level?.id?.toString(),
+                        e.target.value,
+                        true
+                      )
+                    }
                     className="w-24 px-4 py-2 rounded-xl bg-white/10 text-white border border-white/20 
                       focus:border-white/40 focus:outline-none"
                     placeholder="0-100"
@@ -239,7 +310,7 @@ Based on these results, ${prompt}
         <div className="glass-effect rounded-3xl p-8 mb-8">
           <h2 className="text-2xl font-bold text-white mb-6">Quick Analysis</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {analysisButtons.map(button => (
+            {analysisButtons.map((button) => (
               <button
                 key={button.id}
                 onClick={() => handleAnalyze(button.query)}
@@ -255,30 +326,46 @@ Based on these results, ${prompt}
 
         <div className="glass-effect rounded-3xl p-8">
           <h2 className="text-2xl font-bold text-white mb-6">AI Analysis</h2>
-          
+
           <div className="h-[500px] overflow-y-auto custom-scrollbar mb-4">
-            {messages.map(message => (
+            {messages.map((message) => (
               <div
                 key={message.id}
-                className={`mb-4 ${message.sender === 'user' ? 'text-right' : 'text-left'}`}
+                className={`mb-4 ${
+                  message.sender === "user" ? "text-right" : "text-left"
+                }`}
               >
                 <div
                   className={`inline-block max-w-[80%] px-6 py-3 rounded-2xl ${
-                    message.sender === 'user'
-                      ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white'
-                      : 'bg-white/10 text-white'
+                    message.sender === "user"
+                      ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white"
+                      : "bg-white/10 text-white"
                   }`}
                 >
-                  {message.sender === 'user' ? (
+                  {message.sender === "user" ? (
                     message.content
                   ) : (
                     <ReactMarkdown
                       components={{
-                        h1: ({ children }) => <h1 className="text-xl font-bold mb-3">{children}</h1>,
-                        h2: ({ children }) => <h2 className="text-lg font-bold mb-2">{children}</h2>,
-                        h3: ({ children }) => <h3 className="text-base font-bold mb-2">{children}</h3>,
-                        p: ({ children }) => <p className="mb-4 last:mb-0">{children}</p>,
-                        strong: ({ children }) => <strong className="font-bold text-white">{children}</strong>,
+                        h1: ({ children }) => (
+                          <h1 className="text-xl font-bold mb-3">{children}</h1>
+                        ),
+                        h2: ({ children }) => (
+                          <h2 className="text-lg font-bold mb-2">{children}</h2>
+                        ),
+                        h3: ({ children }) => (
+                          <h3 className="text-base font-bold mb-2">
+                            {children}
+                          </h3>
+                        ),
+                        p: ({ children }) => (
+                          <p className="mb-4 last:mb-0">{children}</p>
+                        ),
+                        strong: ({ children }) => (
+                          <strong className="font-bold text-white">
+                            {children}
+                          </strong>
+                        ),
                       }}
                     >
                       {message.content}

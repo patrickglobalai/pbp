@@ -1,5 +1,10 @@
-export type UserRole = 'respondent' | 'coach' | 'partner' | 'admin';
-export type SubscriptionTier = 'basic' | 'basic_plus' | 'advanced' | 'partner' | 'admin';
+export type UserRole = "respondent" | "coach" | "partner" | "admin";
+export type SubscriptionTier =
+  | "basic"
+  | "basic_plus"
+  | "advanced"
+  | "partner"
+  | "admin";
 
 export interface User {
   userId: string;
@@ -40,9 +45,11 @@ export interface Coach {
   userId: string;
   partnerId?: string;
   assessmentCode: string;
-  tier: 'basic' | 'basic_plus' | 'advanced' | 'partner';
+  tier: "basic" | "basic_plus" | "advanced" | "partner";
   aiAnalysisAccess: boolean;
   manualAiAccess: boolean;
   createdAt: Date;
   updatedAt: Date;
+  affiliationLink: string;
+  affiliationButtonText: string;
 }

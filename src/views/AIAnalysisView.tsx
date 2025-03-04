@@ -116,27 +116,70 @@ export function AIAnalysisView() {
     pdf.setFontSize(12);
 
     messages.forEach((message) => {
-      // Split content into lines that fit the page width
-      const lines = pdf.splitTextToSize(message.content, maxWidth);
+      // Format HTML tags
+      let content = message.content;
+      const lines = [];
 
-      // Calculate height needed for this message
-      const messageHeight = (lines.length + 1) * lineHeight + 15; // +1 for sender name
+      // Split content by HTML tags and process each part
+      const parts = content.split(/(<[^>]*>)/);
+      let currentY = yPosition;
+
+      parts.forEach((part) => {
+        if (part.startsWith("<")) {
+          const tag = part.toLowerCase();
+          if (tag === "<hr>") {
+            // Draw a horizontal line
+            pdf.setDrawColor(200, 200, 200);
+            pdf.line(margin, currentY, pageWidth - margin, currentY);
+            currentY += lineHeight;
+          } else if (tag === "<br>") {
+            // Add line break
+            currentY += lineHeight;
+          } else if (tag === "<li>") {
+            // Add bullet point
+            pdf.circle(margin + 2, currentY + 2, 1, "F");
+            lines.push({ text: "", y: currentY, indent: true });
+          }
+        } else if (part.trim()) {
+          // Split text to fit page width, considering indentation for list items
+          const maxTextWidth =
+            lines.length > 0 && lines[lines.length - 1].indent
+              ? maxWidth - 10
+              : maxWidth;
+          const textLines = pdf.splitTextToSize(part, maxTextWidth);
+
+          textLines.forEach((line) => {
+            lines.push({
+              text: line,
+              y: currentY,
+              indent: lines.length > 0 && lines[lines.length - 1].indent,
+            });
+            currentY += lineHeight;
+          });
+        }
+      });
+
+      // Calculate total height needed
+      const messageHeight = (lines.length + 1) * lineHeight + 15;
 
       // Check if we need a new page
       if (yPosition + messageHeight > pageHeight - margin) {
         pdf.addPage();
         yPosition = margin;
+        currentY = yPosition;
       }
 
       if (message.sender === "user") {
         // User messages on the right
-        pdf.setFillColor(99, 102, 241); // Bluish-purple color (indigo-600)
+        pdf.setFillColor(99, 102, 241);
 
-        // Calculate bubble width based on longest line
+        // Calculate max width needed for all lines
         const bubbleWidth =
           Math.max(
             pdf.getTextWidth("User"),
-            ...lines.map((line: string) => pdf.getTextWidth(line))
+            ...lines.map(
+              (line) => pdf.getTextWidth(line.text) + (line.indent ? 10 : 0)
+            )
           ) + 10;
 
         // Draw bubble
@@ -151,28 +194,28 @@ export function AIAnalysisView() {
         );
 
         // Add sender name
-        pdf.setTextColor(255, 255, 255); // White text for better contrast
+        pdf.setTextColor(255, 255, 255);
         pdf.setFont("helvetica", "bold");
-        pdf.setFont("helvetica", "normal");
         pdf.text("User", pageWidth - margin - bubbleWidth + 5, yPosition + 5);
+        pdf.setFont("helvetica", "normal");
 
         // Add message text
-        lines.forEach((line: string, index: number) => {
-          pdf.text(
-            line,
-            pageWidth - margin - bubbleWidth + 5,
-            yPosition + 15 + index * lineHeight
-          );
+        lines.forEach((line) => {
+          const xPos =
+            pageWidth - margin - bubbleWidth + 5 + (line.indent ? 10 : 0);
+          pdf.text(line.text, xPos, line.y + 15);
         });
       } else {
         // AI messages on the left
-        pdf.setFillColor(240, 240, 240); // Light gray for AI
+        pdf.setFillColor(240, 240, 240);
 
-        // Calculate bubble width based on longest line
+        // Calculate max width needed for all lines
         const bubbleWidth =
           Math.max(
             pdf.getTextWidth("AI"),
-            ...lines.map((line: string) => pdf.getTextWidth(line))
+            ...lines.map(
+              (line) => pdf.getTextWidth(line.text) + (line.indent ? 10 : 0)
+            )
           ) + 10;
 
         // Draw bubble
@@ -180,7 +223,7 @@ export function AIAnalysisView() {
           margin,
           yPosition - 5,
           bubbleWidth,
-          messageHeight - 5, // Reduce height to remove extra padding
+          messageHeight - 5,
           5,
           5,
           "F"
@@ -189,12 +232,13 @@ export function AIAnalysisView() {
         // Add sender name
         pdf.setTextColor(0, 0, 0);
         pdf.setFont("helvetica", "bold");
-        pdf.setFont("helvetica", "normal");
         pdf.text("AI", margin + 5, yPosition + 5);
+        pdf.setFont("helvetica", "normal");
 
         // Add message text
-        lines.forEach((line: string, index: number) => {
-          pdf.text(line, margin + 5, yPosition + 15 + index * lineHeight);
+        lines.forEach((line) => {
+          const xPos = margin + 5 + (line.indent ? 10 : 0);
+          pdf.text(line.text, xPos, line.y + 15);
         });
       }
 
@@ -231,10 +275,18 @@ export function AIAnalysisView() {
           background-size: 400% 400%;
           animation: gradientBG 15s ease infinite;
         }
+        .chat-history {
+          background-color: rgba(255, 255, 255, 0.1);
+          backdrop-filter: blur(10px);
+          padding: 20px;
+          border-radius: 10px;
+        }
       </style>
 <title>Chat History</title></head><body class="p-4">
       <h1 class="text-2xl font-bold text-white mb-4">Chat History</h1>
-        ${html}
+      <div class="chat-history">
+      ${html}
+      </div>
       </body></html>`
     );
     printWindow?.document.close();
@@ -528,7 +580,9 @@ export function AIAnalysisView() {
                           message.sender === "user"
                             ? "-bottom-2 -left-2"
                             : "-bottom-2 -right-2"
-                        }`}
+                        }
+                            print:hidden 
+                          `}
                         onClick={() => setEditingMessage(index)}
                       >
                         <Pencil className="w-3 h-3 text-white" />
@@ -641,7 +695,7 @@ export function AIAnalysisView() {
               className="px-4 py-3 rounded-xl bg-white/10 text-white hover:bg-white/20 
                   transition-all disabled:opacity-50 text-sm"
             >
-              Print Chat History
+              Print As It Is
             </button>
           </div>
         </div>

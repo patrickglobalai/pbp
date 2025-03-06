@@ -1,10 +1,11 @@
+import { Font, StyleSheet } from "@react-pdf/renderer";
 import { collection, getDocs, query, where } from "firebase/firestore";
+import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import { ArrowLeft, Brain, Pencil, Send, Sparkles } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { toast } from "react-toastify";
 import { HarmonicGraph } from "../components/HarmonicGraph";
 import { ResultsGraph } from "../components/ResultsGraph";
 import { useAssessment } from "../contexts/AssessmentContext";
@@ -73,6 +74,31 @@ const analysisButtons = [
   },
 ];
 
+// Register the font
+Font.register({
+  family: "Helvetica",
+  fonts: [
+    {
+      src: "https://fonts.gstatic.com/s/helveticaneue/v70/1Ptsg8zYS_SKggPNyC0IT4ttDfA.woff2",
+    },
+  ],
+});
+
+// Define styles for the PDF
+const styles = StyleSheet.create({
+  page: {
+    padding: 20,
+  },
+  title: {
+    fontSize: 24,
+    marginBottom: 20,
+    fontFamily: "Helvetica",
+  },
+  content: {
+    fontFamily: "Helvetica",
+  },
+});
+
 export function AIAnalysisView() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -96,214 +122,52 @@ export function AIAnalysisView() {
 
   const [currentCoach, setCurrentCoach] = useState<Coach | null>(null);
 
-  const exportChatHistory = () => {
-    const pdf = new jsPDF();
+  const exportChatHistory = async () => {
+    if (!chatHistoryRef.current) {
+      console.error("Chat history element not found.");
+      alert("Chat history is not available for export.");
+      return;
+    }
 
-    // Set initial position and styling
-    let yPosition = 20;
-    const lineHeight = 7;
-    const margin = 10;
-    const pageHeight = pdf.internal.pageSize.height;
-    const pageWidth = pdf.internal.pageSize.width;
-    const maxWidth = pageWidth - margin * 2; // Maximum width for text
+    // Apply the gradient background to the chat history element
+    chatHistoryRef.current.style.background =
+      "linear-gradient(-45deg, #0ea5e9, #6366f1, #8b5cf6, #0ea5e9)";
+    chatHistoryRef.current.style.backgroundSize = "400% 400%";
+    chatHistoryRef.current.style.padding = "10px";
 
-    // Add title
-    pdf.setFontSize(18);
-    pdf.text("Chat History", margin, yPosition);
-    yPosition += lineHeight * 2;
-
-    // Set smaller font for messages
-    pdf.setFontSize(12);
-
-    messages.forEach((message) => {
-      // Format HTML tags
-      let content = message.content;
-      const lines = [];
-      let currentLine = {
-        text: "",
-        style: "normal",
-        color: 0,
-        indent: false,
-        xOffset: 0,
-      };
-
-      // Split content by HTML tags and process each part
-      const parts = content.split(/(<[^>]*>)/);
-      let currentY = yPosition;
-
-      parts.forEach((part) => {
-        if (part.startsWith("<")) {
-          const tag = part.toLowerCase();
-          if (tag === "<hr>") {
-            // Draw the horizontal line first, behind the bubble
-            pdf.setDrawColor(0, 0, 0);
-            const lineY = currentY + 2; // Adjust line position to be slightly below
-            pdf.line(
-              margin + 5, // Start inside the bubble
-              lineY,
-              pageWidth - margin - 5, // End inside the bubble
-              lineY
-            );
-            currentY += lineHeight / 2;
-            lines.push({ text: "", y: currentY, indent: false });
-          } else if (tag === "<br>") {
-            // Add line break with reduced spacing
-            currentY += lineHeight / 2;
-            lines.push({ text: "", y: currentY, xOffset: 10, indent: false });
-          } else if (tag === "<li" || tag === "<ul" || tag === "<ol") {
-            // Add bullet point without extra spacing
-            lines.push({ text: "•", y: currentY, xOffset: 10, indent: true });
-          } else if (tag === "<b>" || tag === "<strong>") {
-            currentLine.style = "bold";
-          } else if (tag === "</b>" || tag === "</strong>") {
-            currentLine.style = "normal";
-          } else if (tag === "<i>" || tag === "<em>") {
-            currentLine.style = "italic";
-          } else if (tag === "</i>" || tag === "</em>") {
-            currentLine.style = "normal";
-          } else if (tag === "<u>") {
-            currentLine.color = 0x0000ff;
-          } else if (tag === "</u>") {
-            currentLine.color = 0;
-          } else if (tag === "<a") {
-            currentLine.color = 0x0000ff;
-          } else if (tag === "</a>") {
-            currentLine.color = 0;
-          }
-          // Don't add new lines for formatting tags
-        } else if (part.trim()) {
-          // Apply current styling to the text
-          pdf.setFont("helvetica", currentLine.style);
-          pdf.setTextColor(currentLine.color);
-
-          // Split text to fit page width, considering indentation for list items
-          const maxTextWidth = currentLine.indent ? maxWidth - 10 : maxWidth;
-          const textLines = pdf.splitTextToSize(part, maxTextWidth);
-
-          textLines.forEach((line) => {
-            lines.push({
-              text: line,
-              y: currentY,
-              indent: currentLine.indent,
-              xOffset: currentLine.xOffset,
-              style: currentLine.style,
-              color: currentLine.color,
-            });
-            currentY += lineHeight;
-          });
-        }
+    try {
+      // Use html2canvas to capture the chat history as an image
+      const canvas = await html2canvas(chatHistoryRef.current, {
+        backgroundColor: null, // Ensures transparent background
+        scale: 2, // Increase scale for better quality
       });
 
-      // Calculate total height with reduced spacing for tags
-      const messageHeight = lines.length * lineHeight + 20;
+      chatHistoryRef.current.style.background = "transparent";
+      chatHistoryRef.current.style.backgroundSize = "100% 100%";
+      chatHistoryRef.current.style.padding = "0";
 
-      // Check if we need a new page
-      if (yPosition + messageHeight > pageHeight - margin) {
-        pdf.addPage();
-        yPosition = margin;
-        currentY = yPosition;
-      }
+      const imgData = canvas.toDataURL("image/png");
 
-      if (message.sender === "user") {
-        // User messages on the right
-        pdf.setFillColor(99, 102, 241);
+      // Create a new jsPDF instance
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "px",
+        format: "a4",
+      });
 
-        // Calculate max width needed for all lines
-        const bubbleWidth =
-          Math.max(
-            pdf.getTextWidth("User"),
-            ...lines.map(
-              (line) => pdf.getTextWidth(line.text) + (line.indent ? 10 : 0)
-            )
-          ) + 10;
+      // Calculate the width and height of the image
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
 
-        // Draw bubble
-        pdf.roundedRect(
-          pageWidth - margin - bubbleWidth,
-          yPosition - 5,
-          bubbleWidth,
-          messageHeight,
-          5,
-          5,
-          "F"
-        );
+      // Add the image to the PDF
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
 
-        // Add sender name
-        pdf.setTextColor(255, 255, 255);
-        pdf.setFont("helvetica", "bold");
-        pdf.text("User", pageWidth - margin - bubbleWidth + 5, yPosition + 5);
-        pdf.setFont("helvetica", "normal");
-
-        // Add message text
-        lines.forEach((line) => {
-          if (line.text) {
-            pdf.setFont("helvetica", line.style);
-            pdf.setTextColor(message.sender === "user" ? 255 : 0);
-            const xPos =
-              pageWidth - margin - bubbleWidth + 5 + (line.indent ? 10 : 0);
-            pdf.text(line.text, xPos, line.y + 14);
-          }
-        });
-      } else {
-        // AI messages on the left
-        pdf.setFillColor(240, 240, 240);
-
-        // Calculate max width needed for all lines
-        const bubbleWidth =
-          Math.max(
-            pdf.getTextWidth("AI"),
-            ...lines.map(
-              (line) => pdf.getTextWidth(line.text) + (line.indent ? 10 : 0)
-            )
-          ) + 10;
-
-        // Draw bubble
-        pdf.roundedRect(
-          margin,
-          yPosition - 5,
-          bubbleWidth,
-          messageHeight,
-          5,
-          5,
-          "F"
-        );
-
-        // Add sender name
-        pdf.setTextColor(0, 0, 0);
-        pdf.setFont("helvetica", "bold");
-        pdf.text("AI", margin + 5, yPosition + 5);
-        pdf.setFont("helvetica", "normal");
-
-        // Add message text
-        lines.forEach((line) => {
-          if (line.text) {
-            pdf.setFont("helvetica", line.style);
-            pdf.setTextColor(line.color);
-            const xPos = margin + 5 + (line.indent ? 10 : 0);
-            pdf.text(line.text, xPos, line.y + 14);
-          }
-        });
-      }
-
-      yPosition += messageHeight + lineHeight / 2;
-    });
-
-    // Save the PDF
-    pdf.save("chat-history.pdf");
-  };
-
-  const copyChatHistory = async () => {
-    const chatHistory = messages.map((message) => ({
-      sender: message.sender,
-      content: message.content,
-    }));
-    const json = JSON.stringify(chatHistory);
-    try {
-      await navigator.clipboard.writeText(json);
-      toast.success("Chat history copied to clipboard");
+      // Save the PDF
+      pdf.save("chat-history.pdf");
     } catch (error) {
-      console.error("Error copying chat history:", error);
-      toast.error("Failed to copy chat history");
+      console.error("Error generating PDF:", error);
+      alert("Failed to export chat history");
     }
   };
 
@@ -723,15 +587,6 @@ export function AIAnalysisView() {
                   transition-all disabled:opacity-50 text-sm"
             >
               Export Chat History
-            </button>
-
-            {/* copy as JSON */}
-            <button
-              onClick={() => copyChatHistory()}
-              className="px-4 py-3 rounded-xl bg-white/10 text-white hover:bg-white/20 
-                  transition-all disabled:opacity-50 text-sm"
-            >
-              Copy Chat History
             </button>
 
             {/* print chat history */}

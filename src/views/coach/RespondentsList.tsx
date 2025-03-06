@@ -114,6 +114,7 @@ export function RespondentsList() {
             : respondent
         )
       );
+      console.log("AI access updated for respondent:", respondentId);
     } catch (err) {
       console.error("Error toggling AI access:", err);
       setError("Failed to update AI access");

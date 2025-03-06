@@ -1,15 +1,22 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { Link, useNavigate } from 'react-router-dom';
-import { Brain, AlertCircle, History, ArrowLeft, ArrowRight, LogOut } from 'lucide-react';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
-import { auth, db } from '../lib/firebase';
-import { ResultsGraph } from '../components/ResultsGraph';
-import { HarmonicGraph } from '../components/HarmonicGraph';
-import { useResults } from '../contexts/ResultsContext';
-import { useAuth } from '../contexts/AuthContext';
-import type { AssessmentResult } from '../types/results';
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { collection, getDocs, orderBy, query, where } from "firebase/firestore";
+import { motion } from "framer-motion";
+import {
+  AlertCircle,
+  ArrowLeft,
+  ArrowRight,
+  Brain,
+  History,
+  LogOut,
+} from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { HarmonicGraph } from "../components/HarmonicGraph";
+import { ResultsGraph } from "../components/ResultsGraph";
+import { useAuth } from "../contexts/AuthContext";
+import { useResults } from "../contexts/ResultsContext";
+import { auth, db } from "../lib/firebase";
+import type { AssessmentResult } from "../types/results";
 
 export function RespondentDashboard() {
   const navigate = useNavigate();
@@ -24,9 +31,9 @@ export function RespondentDashboard() {
   const handleLogout = useCallback(async () => {
     try {
       await signOut(auth);
-      navigate('/login');
+      navigate("/login");
     } catch (err) {
-      console.error('Error signing out:', err);
+      console.error("Error signing out:", err);
     }
   }, [navigate]);
 
@@ -34,40 +41,42 @@ export function RespondentDashboard() {
     try {
       // Get all results ordered by completedAt
       const resultsQuery = query(
-        collection(db, 'results'),
-        where('userId', '==', userId),
-        orderBy('completedAt', 'desc')
+        collection(db, "results"),
+        where("userId", "==", userId),
+        orderBy("completedAt", "desc")
       );
       const resultsSnapshot = await getDocs(resultsQuery);
-      
+
       if (!resultsSnapshot.empty) {
-        const allResults = resultsSnapshot.docs.map(doc => ({
+        const allResults = resultsSnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
           completedAt: doc.data().completedAt.toDate(),
-          retakenAt: doc.data().retakenAt?.toDate()
+          retakenAt: doc.data().retakenAt?.toDate(),
         })) as AssessmentResult[];
-        
+
         setResults(allResults);
 
         // Get respondent's coach info to check AI access
         const respondentQuery = query(
-          collection(db, 'respondents'),
-          where('userId', '==', userId)
+          collection(db, "respondents"),
+          where("userId", "==", userId)
         );
         const respondentSnapshot = await getDocs(respondentQuery);
-        
+
         if (!respondentSnapshot.empty) {
           const respondentData = respondentSnapshot.docs[0].data();
           const nextRetake = respondentData.nextRetakeDate?.toDate();
           const retakeEnabled = respondentData.retakeEnabled !== false;
-          
-          setCanRetake(retakeEnabled && (!nextRetake || nextRetake <= new Date()));
+
+          setCanRetake(
+            retakeEnabled && (!nextRetake || nextRetake <= new Date())
+          );
           setNextRetakeDate(nextRetake || null);
         }
       }
     } catch (err) {
-      console.error('Error loading results:', err);
+      console.error("Error loading results:", err);
     }
   }, []);
 
@@ -75,9 +84,11 @@ export function RespondentDashboard() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       try {
         if (!user) {
-          navigate('/login');
+          navigate("/login");
           return;
         }
+
+        console.log("user", user);
 
         await loadResults(user.uid);
       } finally {
@@ -90,13 +101,13 @@ export function RespondentDashboard() {
 
   const handlePreviousResult = () => {
     if (currentPage < results.length) {
-      setCurrentPage(prev => prev + 1);
+      setCurrentPage((prev) => prev + 1);
     }
   };
 
   const handleNextResult = () => {
     if (currentPage > 1) {
-      setCurrentPage(prev => prev - 1);
+      setCurrentPage((prev) => prev - 1);
     }
   };
 
@@ -155,13 +166,20 @@ export function RespondentDashboard() {
           <div className="flex items-center gap-4">
             <Brain className="w-12 h-12 text-white" />
             <div>
-              <h1 className="text-3xl font-bold text-white">Your Assessment Results</h1>
+              <h1 className="text-3xl font-bold text-white">
+                Your Assessment Results
+              </h1>
               <div className="flex items-center gap-2 text-white/80">
                 <span>Version {totalVersions - currentPage + 1}</span>
                 {selectedResult.retakenAt && (
-                  <span>• Retaken on {selectedResult.retakenAt.toLocaleDateString()}</span>
+                  <span>
+                    • Retaken on {selectedResult.retakenAt.toLocaleDateString()}
+                  </span>
                 )}
-                <span>• Completed on {selectedResult.completedAt.toLocaleDateString()}</span>
+                <span>
+                  • Completed on{" "}
+                  {selectedResult.completedAt.toLocaleDateString()}
+                </span>
               </div>
             </div>
           </div>
@@ -199,7 +217,7 @@ export function RespondentDashboard() {
         </div>
 
         <div className="grid md:grid-cols-2 gap-8 mb-8">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="glass-effect rounded-3xl p-8"
@@ -253,7 +271,7 @@ export function RespondentDashboard() {
               Retake Assessment
             </Link>
           )}
-          
+
           {!canRetake && nextRetakeDate && (
             <div className="text-white/80 text-center">
               Next retake available on: {nextRetakeDate.toLocaleDateString()}
@@ -272,8 +290,8 @@ export function RespondentDashboard() {
 
           {!hasAIAccess && (
             <div className="text-white/60 text-center">
-              AI Analysis is not available with your current plan.
-              Please contact your coach for more information.
+              AI Analysis is not available with your current plan. Please
+              contact your coach for more information.
             </div>
           )}
 

@@ -1,7 +1,12 @@
 import { User, onAuthStateChanged } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { checkUserAgreements, saveUserAgreements, checkCoachAIAccess } from "../lib/auth";
-import { auth } from "../lib/firebase";
+import {
+  checkCoachAIAccess,
+  checkUserAgreements,
+  saveUserAgreements,
+} from "../lib/auth";
+import { auth, db } from "../lib/firebase";
 
 interface AuthContextType {
   user: User | null;
@@ -27,8 +32,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
       if (user) {
-        const aiAccess = await checkCoachAIAccess(user.uid);
-        setHasAIAccess(aiAccess);
+        // get user role from firestore
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        const userData = userDoc.data();
+        const userRole = userData?.role;
+
+        console.log("userRole", userRole);
+
+        if (userRole === "coach") {
+          const aiAccess = await checkCoachAIAccess(user.uid);
+          setHasAIAccess(aiAccess);
+        }
+        if (userRole === "respondent") {
+          setHasAIAccess(true);
+        }
       } else {
         setHasAIAccess(false);
       }

@@ -1,5 +1,12 @@
 import { User, onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  where,
+} from "firebase/firestore";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import {
   checkCoachAIAccess,
@@ -7,6 +14,7 @@ import {
   saveUserAgreements,
 } from "../lib/auth";
 import { auth, db } from "../lib/firebase";
+import { DB_URL } from "../utils/functions";
 
 interface AuthContextType {
   user: User | null;
@@ -33,18 +41,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(user);
       if (user) {
         // get user role from firestore
-        const userDoc = await getDoc(doc(db, "users", user.uid));
+        const userDoc = await getDoc(doc(db, DB_URL.users, user.uid));
         const userData = userDoc.data();
         const userRole = userData?.role;
-
-        console.log("userRole", userRole);
 
         if (userRole === "coach") {
           const aiAccess = await checkCoachAIAccess(user.uid);
           setHasAIAccess(aiAccess);
         }
         if (userRole === "respondent") {
-          setHasAIAccess(true);
+          const resQuery = query(
+            collection(db, DB_URL.respondents),
+            where("userId", "==", user.uid)
+          );
+          const respondentDoc = await getDocs(resQuery);
+          const respondentData = respondentDoc.docs[0].data();
+          const respondentAIAccess = respondentData?.aiAccessEnabled;
+
+          setHasAIAccess(respondentAIAccess);
         }
       } else {
         setHasAIAccess(false);
